@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Google Meet Chat to Clipboard",
+  "version": "1.0",
+  "permissions": ["clipboardWrite", "activeTab"],
+  "action": {
+    "default_icon": {
+      "16": "images/icon16.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://meet.google.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
