@@ -1,10 +1,13 @@
 // 通話から退出ボタンを識別するためのセレクタ
-const exitButtonSelector = '[aria-label="通話から退出"]';
+const exitButtonSelector = '[jsname="CQylAd"]';
+
+// チャットメッセージを識別するためのセレクタ
+const chatMessageSelector = '[jsname="Ypafjf"] div div';
 
 // チャット要素を探してクリップボードに保存
 function saveChat() {
     console.log('saveChat');
-    let chatMessages = [...document.querySelectorAll('.GDhqjd div div')].map(el => el.innerText);
+    let chatMessages = [...document.querySelectorAll(chatMessageSelector)].map(el => el.innerText);
     navigator.clipboard.writeText(chatMessages.join('\n'));
     console.log(chatMessages.join('\n'));
 }
