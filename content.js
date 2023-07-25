@@ -6,10 +6,19 @@ const chatMessageSelector = '[jsname="Ypafjf"] div div';
 
 // チャット要素を探してクリップボードに保存
 function saveChat() {
-    console.log('saveChat');
+    let chatMessage = getChatText();
+    if (chatMessage === '') {
+        return;
+    }
+    navigator.clipboard.writeText(chatMessage);
+}
+
+function getChatText() {
     let chatMessages = [...document.querySelectorAll(chatMessageSelector)].map(el => el.innerText);
-    navigator.clipboard.writeText(chatMessages.join('\n'));
-    console.log(chatMessages.join('\n'));
+    if (chatMessages.length === 0) {
+        return '';
+    }
+    return chatMessages.join('\n');
 }
 
 // ボタンクリックを監視するためのMutationObserver
