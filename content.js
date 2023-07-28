@@ -7,6 +7,12 @@ const chatMessageSelector = '[jsname="Ypafjf"] div div';
 // 退出済みメッセージを識別するためのセレクタ
 const removedMessageSelector = '.lAqQo .roSPhc[jsname="r4nke"]';
 
+// チャットの見出しを識別するためのセレクタ
+const chatTitleSelector = '[jsname="uPuGNe"][role="heading"]';
+
+// コピーボタンのID
+const copyButtonId = 'GMCTC-copyButton';
+
 // チャットログを保存するための変数
 let tmpChatLogText = '';
 
@@ -94,3 +100,52 @@ window.addEventListener('beforeunload', (e) => {
         e.returnValue='Remove?';
     }
 });
+
+// チャットの見出しの存在判定を行う
+function isChatTitle() {
+    const chatHeadingElement = document.querySelector(chatTitleSelector);
+    if (chatHeadingElement !== null){
+        // コピーボタンが配置されていなければafterで追加する
+        const copyButton = document.querySelector(`#${copyButtonId}`);
+        if (copyButton === null) {
+            const chatHeadingElement = document.querySelector(chatTitleSelector);
+            chatHeadingElement.after(createCopyButton());
+        }
+    }
+    setTimeout(isChatTitle, 500)
+}
+
+// コピーボタンのDOMを作成する
+function createCopyButton() {
+    const copyIconSpan = document.createElement('span');
+    copyIconSpan.classList.add('google-material-icons');
+    copyIconSpan.textContent = 'content_copy';
+    copyIconSpan.style.color = 'rgb(95, 99, 104)';
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.style.backgroundColor = 'rgba(0, 0, 0, 0)';
+    copyButton.style.border = 'none';
+    copyButton.style.padding = '12px';
+    copyButton.style.cursor = 'pointer';
+    copyButton.style.borderRadius = '50%';
+    copyButton.append(copyIconSpan);
+    copyButton.addEventListener('mouseenter', () => {
+        copyButton.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+    });
+    copyButton.addEventListener('mouseleave', () => {
+        copyButton.style.backgroundColor = 'rgba(0, 0, 0, 0)';
+    });
+    copyButton.addEventListener('mousedown', () => {
+        copyButton.style.backgroundColor = 'rgba(0, 0, 0, 0)';
+    });
+    copyButton.addEventListener('mouseup', () => {
+        copyButton.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+    });
+    copyButton.addEventListener('click',saveChat);
+    copyButton.id = copyButtonId;
+    const wrapDiv = document.createElement('div');
+    wrapDiv.append(copyButton);
+    return wrapDiv;
+}
+
+setTimeout(isChatTitle, 500);
