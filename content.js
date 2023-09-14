@@ -1,6 +1,6 @@
 const SELECTORS = {
     exitButton: '[jsname="CQylAd"]',
-    chatMessage: '[jsname="Ypafjf"] div div',
+    chatMessage: '[jsname="Ypafjf"] .YTbUzc , [jsname="Ypafjf"]  [jsname="biJjHb"] , [jsname="Ypafjf"]  [jscontroller="RrV5Ic"]',
     removedMessage: '.lAqQo .roSPhc[jsname="r4nke"]',
     chatTitle: '[jsname="uPuGNe"][role="heading"]'
 };
