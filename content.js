@@ -1,8 +1,12 @@
+const chatMemberNameElementClassName = 'poVWob';
+
 const SELECTORS = {
     exitButton: '[jsname="CQylAd"]',
     chatMessage: '[jsname="Ypafjf"] .YTbUzc , [jsname="Ypafjf"]  [jsname="biJjHb"] , [jsname="Ypafjf"]  [jscontroller="RrV5Ic"], .poVWob',
     removedMessage: '.lAqQo .roSPhc[jsname="r4nke"]',
-    chatTitle: '[jsname="uPuGNe"][role="heading"]'
+    chatTitle: '[jsname="uPuGNe"][role="heading"]',
+    chatMemberName: `.${chatMemberNameElementClassName}`,
+    selfNameElement: '[data-self-name]'
 };
 
 const IDS = {
@@ -14,6 +18,12 @@ let tmpChatLogText = '';
 
 // チャットログ表示フラグ
 let chatOutputFlag = false;
+
+// 自分の名前を保存するための変数
+let selfName = '';
+
+// 自分としてチャットに表示されるラベルを保存するための変数
+let selfNameLabel = '';
 
 // セレクタを元にDOMを検索し、存在したら指定のイベントを追加する関数
 function observeAndAttachEvent(selector, event, eventHandler, disconnect) {
@@ -46,11 +56,35 @@ function saveChatLog() {
 }
 
 function getChatText() {
-    let chatMessages = [...document.querySelectorAll(SELECTORS.chatMessage)].map(el => el.innerText);
+    let chatMessages = [...document.querySelectorAll(SELECTORS.chatMessage)].map(el => {
+        if (isSelfNameAndLabelReady()){
+            if (el.classList.contains(chatMemberNameElementClassName)) {
+                if (el.innerText === selfNameLabel) {
+                    return selfName;
+                }
+            }
+            return el.innerText
+        }
+        el.innerText
+    });
     return chatMessages.length ? chatMessages.join('\n') : '';
 }
 
-const exitButtonObserver = observeAndAttachEvent(SELECTORS.exitButton, 'click', saveChat, true);
+// 自分の名前と自分の名前として表示されるラベルを取得する
+function getSelfNameAndLabel() {
+    const selfNameElement = document.querySelector(SELECTORS.selfNameElement);
+    if (selfNameElement && selfNameElement.innerText && selfNameElement.getAttribute('data-self-name')) {
+        selfName = selfNameElement.innerText;
+        selfNameLabel = selfNameElement.getAttribute('data-self-name');
+    }
+}
+
+// 自分の名前をラベルが保存されているかを確認する
+function isSelfNameAndLabelReady() {
+    return selfName !== '' && selfNameLabel !== '';
+}
+
+observeAndAttachEvent(SELECTORS.exitButton, 'click', saveChat, true);
 
 // 退出済みメッセージを監視するためのMutationObserver
 const removedMessageObserver = new MutationObserver((mutationsList, observer) => {
@@ -95,6 +129,7 @@ window.addEventListener('beforeunload', (e) => {
 // チャットの見出しの存在判定を行う
 function isChatTitle() {
     const chatHeadingElement = document.querySelector(SELECTORS.chatTitle);
+    getSelfNameAndLabel();
     if (chatHeadingElement !== null){
         if (document.querySelector(`#${IDS.copyButton}`) === null) {
             chatHeadingElement.after(createCopyButton());
