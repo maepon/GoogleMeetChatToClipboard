@@ -6,7 +6,8 @@ const SELECTORS = {
     removedMessage: '.lAqQo .roSPhc[jsname="r4nke"]',
     chatTitle: '[jsname="uPuGNe"][role="heading"]',
     chatMemberName: `.${chatMemberNameElementClassName}`,
-    selfNameElement: '[data-self-name]'
+    selfNameElement: '[data-self-name]',
+    selfNameTextElement: '[role="tooltip"]'
 };
 
 const IDS = {
@@ -57,15 +58,7 @@ function saveChatLog() {
 
 function getChatText() {
     let chatMessages = [...document.querySelectorAll(SELECTORS.chatMessage)].map(el => {
-        if (isSelfNameAndLabelReady()){
-            if (el.classList.contains(chatMemberNameElementClassName)) {
-                if (el.innerText === selfNameLabel) {
-                    return selfName;
-                }
-            }
-            return el.innerText
-        }
-        el.innerText
+        return el.innerText
     });
     return chatMessages.length ? chatMessages.join('\n') : '';
 }
@@ -73,8 +66,9 @@ function getChatText() {
 // 自分の名前と自分の名前として表示されるラベルを取得する
 function getSelfNameAndLabel() {
     const selfNameElement = document.querySelector(SELECTORS.selfNameElement);
-    if (selfNameElement && selfNameElement.innerText && selfNameElement.getAttribute('data-self-name')) {
-        selfName = selfNameElement.innerText;
+    const selfNameTextElement = selfNameElement.querySelector(SELECTORS.selfNameTextElement);
+    if (selfNameElement && selfNameTextElement.textContent && selfNameElement.getAttribute('data-self-name')) {
+        selfName = selfNameTextElement.textContent;
         selfNameLabel = selfNameElement.getAttribute('data-self-name');
     }
 }
@@ -129,7 +123,6 @@ window.addEventListener('beforeunload', (e) => {
 // チャットの見出しの存在判定を行う
 function isChatTitle() {
     const chatHeadingElement = document.querySelector(SELECTORS.chatTitle);
-    getSelfNameAndLabel();
     if (chatHeadingElement !== null){
         if (document.querySelector(`#${IDS.copyButton}`) === null) {
             chatHeadingElement.after(createCopyButton());
