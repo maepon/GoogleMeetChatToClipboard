@@ -5,14 +5,13 @@ const SELECTORS = {
     chatMessage: '[jsname="Ypafjf"] .YTbUzc , [jsname="Ypafjf"]  [jsname="biJjHb"] , [jsname="Ypafjf"]  [jscontroller="RrV5Ic"], .poVWob',
     removedMessage: '.lAqQo .roSPhc[jsname="r4nke"]',
     chatTitle: '[jsname="uPuGNe"][role="heading"]',
-    chatMemberName: `.${chatMemberNameElementClassName}`,
+    chatMemberName: `.ASy21[title]`,
     selfNameElement: '[data-self-name]',
     selfNameTextElement: '[role="tooltip"]'
 };
 
 const IDS = {
-    copyButton: 'GMCTC-copyButton',
-    chatLogTextArea: 'GMCTC-onRemoveChatLogTextArea'
+    copyButton: 'GMCTC-copyButton', chatLogTextArea: 'GMCTC-onRemoveChatLogTextArea'
 };
 // チャットログを保存するための変数
 let tmpChatLogText = '';
@@ -29,7 +28,7 @@ let selfNameLabel = '';
 // セレクタを元にDOMを検索し、存在したら指定のイベントを追加する関数
 function observeAndAttachEvent(selector, event, eventHandler, disconnect) {
     const observer = new MutationObserver((mutationsList, observer) => {
-        for(let mutation of mutationsList) {
+        for (let mutation of mutationsList) {
             if (mutation.type === 'childList') {
                 const element = document.querySelector(selector);
                 if (element) {
@@ -39,7 +38,7 @@ function observeAndAttachEvent(selector, event, eventHandler, disconnect) {
             }
         }
     });
-    observer.observe(document, { childList: true, subtree: true });
+    observer.observe(document, {childList: true, subtree: true});
     return observer;
 }
 
@@ -58,18 +57,28 @@ function saveChatLog() {
 
 function getChatText() {
     let chatMessages = [...document.querySelectorAll(SELECTORS.chatMessage)].map(el => {
-        return el.innerText
+        if (isSelfNameAndLabelReady() && el.classList.contains(chatMemberNameElementClassName) && el.innerText.toString() === selfNameLabel) {
+            return selfName;
+        }
+        return el.innerText;
     });
     return chatMessages.length ? chatMessages.join('\n') : '';
 }
 
 // 自分の名前と自分の名前として表示されるラベルを取得する
-function getSelfNameAndLabel() {
+function getSelfLabel() {
     const selfNameElement = document.querySelector(SELECTORS.selfNameElement);
-    const selfNameTextElement = selfNameElement.querySelector(SELECTORS.selfNameTextElement);
-    if (selfNameElement && selfNameTextElement.textContent && selfNameElement.getAttribute('data-self-name')) {
-        selfName = selfNameTextElement.textContent;
+    if (selfNameElement && selfNameElement.getAttribute('data-self-name')) {
         selfNameLabel = selfNameElement.getAttribute('data-self-name');
+        return selfNameLabel;
+    }
+    return '';
+}
+
+function getChatMemberName() {
+    const chatMemberNameElement = document.querySelector(SELECTORS.chatMemberName);
+    if (chatMemberNameElement && chatMemberNameElement.getAttribute('title')) {
+        selfName = chatMemberNameElement.getAttribute('title');
     }
 }
 
@@ -79,27 +88,28 @@ function isSelfNameAndLabelReady() {
 }
 
 observeAndAttachEvent(SELECTORS.exitButton, 'click', saveChat, true);
+observeAndAttachEvent(`#${IDS.copyButton}`, 'click', saveChat, true);
 
 // 退出済みメッセージを監視するためのMutationObserver
 const removedMessageObserver = new MutationObserver((mutationsList, observer) => {
-    for(let mutation of mutationsList) {
+    for (let mutation of mutationsList) {
         if (mutation.type === 'childList') {
             const removeMessageElement = document.querySelector(SELECTORS.removedMessage);
             if (removeMessageElement) {
-                if (chatOutputFlag === false){
+                if (chatOutputFlag === false) {
                     const textarea = document.createElement('textarea');
-                    textarea.id=IDS.chatLogTextArea;
+                    textarea.id = IDS.chatLogTextArea;
                     textarea.style.width = '300px';
                     textarea.style.height = '180px';
                     textarea.value = tmpChatLogText;
                     const copyButton = document.createElement('button');
                     copyButton.textContent = 'Copy';
                     copyButton.type = 'button';
-                    copyButton.addEventListener('click',saveChatLog);
+                    copyButton.addEventListener('click', saveChatLog);
                     const pElement = document.createElement('p');
                     pElement.append(copyButton);
                     const wrapDiv = document.createElement('div');
-                    wrapDiv.append(textarea,pElement);
+                    wrapDiv.append(textarea, pElement);
                     removeMessageElement.after(wrapDiv)
                     chatOutputFlag = true;
                 }
@@ -109,21 +119,21 @@ const removedMessageObserver = new MutationObserver((mutationsList, observer) =>
     }
 });
 
-removedMessageObserver.observe(document, { childList: true, subtree: true })
+removedMessageObserver.observe(document, {childList: true, subtree: true})
 
 window.addEventListener('beforeunload', (e) => {
     const chatText = getChatText()
-    if (chatText !== ''){
-        console.log(chatText);
+    if (chatText !== '') {
         tmpChatLogText = chatText
-        e.returnValue='Remove?';
+        e.returnValue = 'Remove?';
     }
 });
 
 // チャットの見出しの存在判定を行う
 function isChatTitle() {
     const chatHeadingElement = document.querySelector(SELECTORS.chatTitle);
-    if (chatHeadingElement !== null){
+    getSelfLabel();
+    if (chatHeadingElement !== null) {
         if (document.querySelector(`#${IDS.copyButton}`) === null) {
             chatHeadingElement.after(createCopyButton());
         }
@@ -131,15 +141,11 @@ function isChatTitle() {
     setTimeout(isChatTitle, 500);
 }
 
-// コピーボタンクリック時のイベント
-function handleCopyButtonClick() {
-    saveChat()
-}
-
 // ボタンの色を変更するイベント
 function handleCopyButtonColorChange(e, color) {
     e.target.style.backgroundColor = color;
 }
+
 // コピーボタンのDOMを作成する
 function createCopyButton() {
     const copyIconSpan = createCopyIconSpan();
@@ -148,7 +154,6 @@ function createCopyButton() {
     copyButton.addEventListener('mouseleave', (e) => handleCopyButtonColorChange(e, 'rgba(0, 0, 0, 0)'));
     copyButton.addEventListener('mousedown', (e) => handleCopyButtonColorChange(e, 'rgba(0, 0, 0, 0)'));
     copyButton.addEventListener('mouseup', (e) => handleCopyButtonColorChange(e, 'rgba(0, 0, 0, 0.05)'));
-    copyButton.addEventListener('click',handleCopyButtonClick);
     const wrapDiv = document.createElement('div');
     wrapDiv.append(copyButton);
     return wrapDiv;
@@ -178,3 +183,4 @@ function createButtonWithIcon(iconElement) {
 }
 
 setTimeout(isChatTitle, 500);
+setInterval(getChatMemberName, 300);
