@@ -1,4 +1,4 @@
-const chatMemberNameElementClassName = 'poVWob';
+const CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME = 'poVWob';
 
 const SELECTORS = {
     exitButton: '[jsname="CQylAd"]',
@@ -38,6 +38,7 @@ function observeAndAttachEvent(selector, event, eventHandler, disconnect) {
             }
         }
     });
+
     observer.observe(document, {childList: true, subtree: true});
     return observer;
 }
@@ -57,7 +58,7 @@ function saveChatLog() {
 
 function getChatText() {
     let chatMessages = [...document.querySelectorAll(SELECTORS.chatMessage)].map(el => {
-        if (isSelfNameAndLabelReady() && el.classList.contains(chatMemberNameElementClassName) && el.innerText.toString() === selfNameLabel) {
+        if (isSelfNameAndLabelReady() && el.classList.contains(CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME) && el.innerText.toString() === selfNameLabel) {
             return selfName;
         }
         return el.innerText;
