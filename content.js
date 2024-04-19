@@ -25,6 +25,14 @@ let selfName = '';
 // 自分としてチャットに表示されるラベルを保存するための変数
 let selfNameLabel = '';
 
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter' && event.isComposing) {
+        // IMEがアクティブな状態でエンターが押された場合、イベントをキャンセル
+        event.preventDefault();
+        event.stopPropagation();
+    }
+},true);
+
 // セレクタを元にDOMを検索し、存在したら指定のイベントを追加する関数
 function observeAndAttachEvent(selector, event, eventHandler, disconnect) {
     const observer = new MutationObserver((mutationsList, observer) => {
