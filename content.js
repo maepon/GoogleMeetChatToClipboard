@@ -81,7 +81,7 @@ function getSelfLabel() {
         selfNameLabel = selfNameElement.getAttribute('data-self-name');
         return selfNameLabel;
     }
-    return '';
+    return 'あなた';
 }
 
 function getChatMemberName() {
