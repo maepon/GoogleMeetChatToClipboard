@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Google Meet Chat to Clipboard",
   "version": "4.2.2",
-  "permissions": ["clipboardWrite", "activeTab"],
+  "permissions": ["clipboardWrite"],
   "action": {
     "default_icon": {
       "16": "images/icon16.png",
