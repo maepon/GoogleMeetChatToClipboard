@@ -4,7 +4,7 @@ Google Meet の 退出ボタンを押したときに、チャットのテキス�
 
 ## Store
 
-[Google Meet Chat to Clipboard - Chrome ウェブストア](https://chrome.google.com/webstore/detail/google-meet-chat-to-clipb/djoaekihkgkgcgckfjakaekoiplcpoec)
+[Google Meet Chat to Clipboard - Chrome ウェブストア](https://chromewebstore.google.com/detail/google-meet-chat-to-clipb/djoaekihkgkgcgckfjakaekoiplcpoec)
 
 ## Change Log
 
