@@ -2,7 +2,8 @@ const CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME = 'poVWob';
 
 const SELECTORS = {
     exitButton: '[jsname="CQylAd"]',
-    chatMessage: '[jsname="Ypafjf"] .YTbUzc , [jsname="Ypafjf"]  [jsname="biJjHb"] , [jsname="Ypafjf"] [jsname="dTKtvb"] [jscontroller="RrV5Ic"], .poVWob',
+    //[チャット本文,時刻表記,発信者]の順でセレクタを記載
+    chatMessage: '[jsname="dTKtvb"] , [jsname="Ypafjf"]  [jsname="biJjHb"] , .poVWob',
     removedMessage: '.lAqQo .roSPhc[jsname="r4nke"]',
     chatTitle: '[jsname="uPuGNe"][role="heading"]',
     chatMemberName: `.ASy21[title]`,
