@@ -27,8 +27,13 @@ const ChatManager = {
 
     // チャットテキストを取得
     getChatText(appState, selectors, chatMemberNameElementClassName) {
-        this.getSelfLabel(appState, selectors);
-        const chatMessages = [...document.querySelectorAll(selectors.chatMessage)].map(el => {
+        console.log('getChatText開始');
+        // PinPから呼び出された場合は、メインウィンドウのDOMを参照
+        const targetDocument = window.parent && window.parent !== window ? window.parent.document : document;
+        console.log('対象ドキュメント:', targetDocument === document ? 'メインウィンドウ' : 'PinPウィンドウ');
+        
+        this.getSelfLabel(appState, selectors, targetDocument);
+        const chatMessages = [...targetDocument.querySelectorAll(selectors.chatMessage)].map(el => {
             if (this.isSelfNameAndLabelReady(appState) && 
                 el.classList.contains(chatMemberNameElementClassName) && 
                 el.innerText.toString() === appState.selfNameLabel) {
@@ -36,12 +41,13 @@ const ChatManager = {
             }
             return el.innerText;
         });
+        console.log('見つかったチャットメッセージ数:', chatMessages.length);
         return chatMessages.length ? chatMessages.join('\n') : '';
     },
 
     // 自分の名前と自分の名前として表示されるラベルを取得する
-    getSelfLabel(appState, selectors) {
-        const selfNameElement = document.querySelector(selectors.selfNameElement);
+    getSelfLabel(appState, selectors, targetDocument = document) {
+        const selfNameElement = targetDocument.querySelector(selectors.selfNameElement);
         if (selfNameElement) {
             appState.selfNameLabel = selfNameElement.textContent;
         }
