@@ -86,3 +86,24 @@ The extension requires minimal permissions:
 - Google Meetの内部CSSクラスとDOM構造に依存 / Dependent on Google Meet's internal CSS classes and DOM structure
 - GoogleがMeetのインターフェースを変更した際に頻繁な更新が必要 / Requires frequent updates when Google changes Meet's interface
 - Google Meetのみで動作（他のビデオ会議プラットフォームでは動作しない） / Only works with Google Meet (not other video conferencing platforms)
+
+## 現在の開発状況 / Current Development Status
+
+### 完了済み / Completed
+- **Phase 1: 状態管理とCONFIG設定の外部化** ✅
+  - AppStateオブジェクトによる状態管理統合
+  - CONFIGオブジェクトによる設定値外部化
+  - コードの保守性向上完了
+
+### 進行中・予定 / In Progress / Planned
+- **Phase 2: 関数の責務分離** 🚧
+  - モジュール分割と単一責任原則の適用
+  - DOMUtils, ChatManager, UIManager等の作成
+- **Phase 3: Observer機能の統一** 📋
+  - 汎用Observer関数の作成
+- **Phase 4: PinP対応の統合** 📋
+  - Picture-in-Picture機能の完全実装
+
+### 参考資料 / References
+- 詳細な計画: `docs/development/リファクタリングプラン.md`
+- PinP対応: `docs/development/PinP対応プラン.md`
