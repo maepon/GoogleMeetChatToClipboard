@@ -9,7 +9,12 @@ const DOMUtils = {
     // Picture-in-Picture専用のObserver関数
     observeAndAttachEventPinP(pinpWindow, selector, event, eventHandler, disconnect) {
         return ObserverManager.observeForElement(selector, (element, observer) => {
-            // element.addEventListener(event, eventHandler); // Phase 4で実装予定：PinP内でのイベントリスナー追加
+            // PinP内のイベントハンドラーを追加
+            // メインウィンドウのコンテキストでイベントハンドラーを実行
+            element.addEventListener(event, () => {
+                // メインウィンドウの関数を呼び出す
+                window.parent.postMessage({ type: 'PINP_EVENT', eventType: event, selector: selector }, '*');
+            });
         }, disconnect, pinpWindow.document);
     },
 

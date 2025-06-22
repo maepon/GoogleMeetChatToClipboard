@@ -19,6 +19,9 @@ Thumbs.db
 *.temp
 *.log
 
+# Debug and test data
+docs/data/
+
 # Chrome extension development
 # (通常、Chrome拡張機能では特別な除外ファイルは少ないが、以下を除外)
 *.crx

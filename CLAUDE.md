@@ -109,9 +109,18 @@ The extension requires minimal permissions:
   - UIManagerのsetTimeout → MutationObserver移行完了
   - Copilotレビュー指摘事項の改善完了
 
-### 進行中・予定 / In Progress / Planned
-- **Phase 4: PinP対応の統合** 📋
+- **Phase 4: PinP対応の統合** ✅
   - Picture-in-Picture機能の完全実装
+  - PinP内での退出ボタンとコピーボタンのイベントリスナー実装
+  - メインウィンドウとPinPウィンドウ間のpostMessage通信機能
+  - PinP内でのUIManager初期化とコピーボタン作成機能
+  - PinPウィンドウのbeforeunloadイベント対応
+  - 統合アプローチによる既存機能との一貫性を保持
+
+### 進行中・予定 / In Progress / Planned
+- **将来的な改善項目** 📋
+  - エラーハンドリングの強化
+  - パフォーマンスの最適化
 
 ### 参考資料 / References
 - 詳細な計画: `docs/development/リファクタリングプラン.md`
