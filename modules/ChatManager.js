@@ -3,10 +3,20 @@
 const ChatManager = {
     // チャット要素を探してクリップボードに保存
     saveChat(appState, selectors, chatMemberNameElementClassName) {
+        console.log('ChatManager.saveChat開始');
         const chatMessage = this.getChatText(appState, selectors, chatMemberNameElementClassName);
+        console.log('取得したチャットメッセージ:', chatMessage);
         appState.chatOutputFlag = true;
-        if (chatMessage === '') return;
-        navigator.clipboard.writeText(chatMessage);
+        if (chatMessage === '') {
+            console.log('チャットメッセージが空のため処理を終了');
+            return;
+        }
+        console.log('クリップボードに書き込み中...');
+        navigator.clipboard.writeText(chatMessage).then(() => {
+            console.log('クリップボードへの書き込み成功');
+        }).catch(err => {
+            console.error('クリップボードへの書き込み失敗:', err);
+        });
     },
 
     // 一時保存されたチャットログをクリップボードに保存

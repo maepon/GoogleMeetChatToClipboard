@@ -63,7 +63,9 @@ document.addEventListener('keydown', function(event) {
 
 // チャット要素を探してクリップボードに保存
 function saveChat() {
+    console.log('saveChat関数が呼び出されました');
     ChatManager.saveChat(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME);
+    console.log('ChatManager.saveChat実行完了');
 }
 
 function saveChatLog() {
@@ -113,6 +115,10 @@ setInterval(getChatMemberName, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
 
 // PinPからのメッセージを受信するリスナー
 window.addEventListener('message', (event) => {
+    // React DevToolsのメッセージを除外
+    if (event.data && event.data.source === 'react-devtools-content-script') {
+        return;
+    }
     console.log('メッセージ受信', event.data);
     if (event.data.type === 'PINP_EVENT') {
         console.log('PinPイベント受信', event.data);
@@ -125,7 +131,9 @@ window.addEventListener('message', (event) => {
             } else if (event.data.selector === `#${IDS.copyButton}`) {
                 // PinP内のコピーボタンがクリックされた場合
                 console.log('PinPコピーボタンクリック処理実行');
+                console.log('saveChat関数実行前');
                 saveChat();
+                console.log('saveChat関数実行後');
             }
         }
     }
