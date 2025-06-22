@@ -80,24 +80,18 @@ function getChatMemberName() {
 DOMUtils.observeAndAttachEvent(SELECTORS.exitButton, 'click', saveChat, true);
 DOMUtils.observeAndAttachEvent(`#${IDS.copyButton}`, 'click', saveChat, true);
 
-// 退出済みメッセージを監視するためのMutationObserver
-const removedMessageObserver = new MutationObserver((mutationsList, observer) => {
-    for (let mutation of mutationsList) {
-        if (mutation.type === 'childList') {
-            const removeMessageElement = document.querySelector(SELECTORS.removedMessage);
-            if (removeMessageElement) {
-                if (AppState.chatOutputFlag === false) {
-                    const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.tmpChatLogText, saveChatLog);
-                    removeMessageElement.after(exitedUI);
-                    AppState.chatOutputFlag = true;
-                }
-                observer.disconnect();  // 通話から退出ボタンが見つかったら監視を停止
-            }
+// 退出済みメッセージを監視するためのObserver
+const removedMessageObserver = ObserverManager.observeForElement(
+    SELECTORS.removedMessage,
+    (removeMessageElement, observer) => {
+        if (AppState.chatOutputFlag === false) {
+            const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.tmpChatLogText, saveChatLog);
+            removeMessageElement.after(exitedUI);
+            AppState.chatOutputFlag = true;
         }
-    }
-});
-
-removedMessageObserver.observe(document, {childList: true, subtree: true})
+    },
+    true // disconnect after finding element
+);
 
 window.addEventListener('beforeunload', (e) => {
     const chatText = ChatManager.getChatText(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME);
@@ -112,7 +106,7 @@ window.addEventListener('beforeunload', (e) => {
 
 
 
-setTimeout(() => UIManager.checkAndCreateCopyButton(CONFIG, SELECTORS, IDS), CONFIG.TIMEOUTS.CHAT_TITLE_CHECK);
+UIManager.initializeCopyButtonObserver(CONFIG, SELECTORS, IDS);
 setInterval(getChatMemberName, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
 
 

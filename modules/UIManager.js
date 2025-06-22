@@ -2,6 +2,20 @@
 
 const UIManager = {
     // チャットの見出しの存在判定を行い、コピーボタンを作成する
+    initializeCopyButtonObserver(config, selectors, ids) {
+        // 初回チェック
+        this.checkAndCreateCopyButton(config, selectors, ids);
+        
+        // Observerでチャットタイトル要素の監視を開始
+        return ObserverManager.observeForUIChanges(
+            selectors.chatTitle,
+            (chatHeadingElement, observer) => {
+                this.checkAndCreateCopyButton(config, selectors, ids);
+            }
+        );
+    },
+
+    // チャットの見出しの存在判定を行い、コピーボタンを作成する（内部処理）
     checkAndCreateCopyButton(config, selectors, ids) {
         const chatHeadingElement = document.querySelector(selectors.chatTitle);
         if (chatHeadingElement !== null) {
@@ -9,7 +23,6 @@ const UIManager = {
                 chatHeadingElement.after(this.createCopyButton(config, ids));
             }
         }
-        setTimeout(() => this.checkAndCreateCopyButton(config, selectors, ids), config.TIMEOUTS.CHAT_TITLE_CHECK);
     },
 
     // コピーボタンのDOMを作成する
