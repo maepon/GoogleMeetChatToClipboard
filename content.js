@@ -63,13 +63,31 @@ document.addEventListener('keydown', function(event) {
 
 // チャット要素を探してクリップボードに保存
 function saveChat() {
-    console.log('saveChat関数が呼び出されました');
     ChatManager.saveChat(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME);
-    console.log('ChatManager.saveChat実行完了');
 }
 
 function saveChatLog() {
     ChatManager.saveChatLog(AppState);
+}
+
+// PinP環境からのsaveChat実行（メインウィンドウから常にPinP内のデータを参照）
+function saveChatFromPinP() {
+    // PinPウィンドウが存在するかチェック
+    if (window.documentPictureInPicture && window.documentPictureInPicture.window) {
+        ChatManager.saveChatFromPinP(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME, window.documentPictureInPicture.window.document);
+    } else {
+        saveChat();
+    }
+}
+
+// PinP環境でのコピーボタン専用（フォーカス移動なし）
+function saveChatFromPinPCopy() {
+    // PinPウィンドウが存在するかチェック
+    if (window.documentPictureInPicture && window.documentPictureInPicture.window) {
+        ChatManager.saveChatFromPinPCopy(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME, window.documentPictureInPicture.window.document);
+    } else {
+        saveChat();
+    }
 }
 
 
@@ -119,21 +137,15 @@ window.addEventListener('message', (event) => {
     if (event.data && event.data.source === 'react-devtools-content-script') {
         return;
     }
-    console.log('メッセージ受信', event.data);
     if (event.data.type === 'PINP_EVENT') {
-        console.log('PinPイベント受信', event.data);
         // PinPからのイベントを受信した際の処理
         if (event.data.eventType === 'click') {
             if (event.data.selector === SELECTORS.exitButton) {
-                // PinP内の退出ボタンがクリックされた場合
-                console.log('PinP退出ボタンクリック処理実行');
-                saveChat();
+                // PinP内の退出ボタンがクリックされた場合（フォーカス移動あり）
+                saveChatFromPinP();
             } else if (event.data.selector === `#${IDS.copyButton}`) {
-                // PinP内のコピーボタンがクリックされた場合
-                console.log('PinPコピーボタンクリック処理実行');
-                console.log('saveChat関数実行前');
-                saveChat();
-                console.log('saveChat関数実行後');
+                // PinP内のコピーボタンがクリックされた場合（フォーカス移動なし）
+                saveChatFromPinPCopy();
             }
         }
     }
@@ -165,7 +177,6 @@ window.documentPictureInPicture.addEventListener('enter',event => {
                 return ObserverManager.observeForUIChanges(
                     SELECTORS.chatTitle,
                     (chatHeadingElement, observer) => {
-                        console.log('PinP チャットタイトル要素発見', chatHeadingElement);
                         this.checkAndCreateCopyButtonPinP(chatHeadingElement);
                     },
                     pinpWindow.document
@@ -173,12 +184,9 @@ window.documentPictureInPicture.addEventListener('enter',event => {
             },
             
             checkAndCreateCopyButtonPinP(chatHeadingElement) {
-                console.log('PinP コピーボタンチェック', chatHeadingElement);
                 if (chatHeadingElement && !pinpWindow.document.querySelector(`#${IDS.copyButton}`)) {
-                    console.log('PinP コピーボタン作成中');
                     const copyButton = UIManager.createCopyButton(CONFIG, IDS);
                     chatHeadingElement.after(copyButton);
-                    console.log('PinP コピーボタン作成完了');
                 }
             }
         };
@@ -187,11 +195,9 @@ window.documentPictureInPicture.addEventListener('enter',event => {
         pinpUIManager.initializeCopyButtonObserverPinP();
         
         // 退出ボタンのイベントリスナーを設定
-        console.log('PinP 退出ボタンObserver開始');
         DOMUtils.observeAndAttachEventPinP(pinpWindow, SELECTORS.exitButton, 'click', saveChat, true);
         
         // PinP内でのコピーボタンのイベントリスナーを設定
-        console.log('PinP コピーボタンイベントObserver開始');
         DOMUtils.observeAndAttachEventPinP(pinpWindow, `#${IDS.copyButton}`, 'click', saveChat, true);
         
         // PinPウィンドウのbeforeunloadイベント対応
@@ -206,12 +212,9 @@ window.documentPictureInPicture.addEventListener('enter',event => {
     
     // PinPウィンドウが既に読み込まれている場合は即座に初期化
     if (pinpWindow.document.readyState === 'complete') {
-        console.log('PinPウィンドウは既に読み込み済み、即座に初期化');
         initializePinP();
     } else {
-        console.log('PinPウィンドウload待機中');
         pinpWindow.addEventListener('load', () => {
-            console.log('PinPウィンドウ load イベント発生');
             initializePinP();
         });
     }
