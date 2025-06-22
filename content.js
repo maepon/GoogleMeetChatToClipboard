@@ -226,8 +226,7 @@ function observeAndAttachEventPinP(pinpWindow, selector, event, eventHandler, di
             if (mutation.type === 'childList') {
                 const element = pinpWindow.document.querySelector(selector);
                 if (element) {
-                    console.log(element)
-                    // element.addEventListener(event, eventHandler);
+                    // element.addEventListener(event, eventHandler); // Phase 2で実装予定：PinP内でのイベントリスナー追加
                     if (disconnect) observer.disconnect();
                 }
             }
@@ -238,19 +237,12 @@ function observeAndAttachEventPinP(pinpWindow, selector, event, eventHandler, di
     return observer;
 }
 
-// ピクチャーインピクチャーのオープンを監視
+// ピクチャーインピクチャーのオープンを監視（Phase 2で本格実装予定）
 window.documentPictureInPicture.addEventListener('enter',event => {
-    console.log('Open')
-    console.log(event.target);
-    console.log(event.target.window);
+    // Phase 2でPinP内チャット機能を実装予定
     event.target.window.addEventListener('load', () => {
-        console.log('PinP Loaded');
+        // PinPウィンドウ読み込み完了時の処理
     })
     observeAndAttachEventPinP(event.target.window, SELECTORS.exitButton, 'click', saveChat, true);
-    console.log(event.target.window.document);
-    console.log(event.target.window.document.querySelector(SELECTORS.exitButton));
-    setTimeout( () => {
-        console.log(event.target.window.document.querySelector(SELECTORS.exitButton));
-    }, CONFIG.TIMEOUTS.PINP_ELEMENT_CHECK)
 })
 
