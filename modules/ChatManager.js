@@ -27,6 +27,37 @@ const ChatManager = {
         });
     },
 
+    // execCommandを使用したクリップボード書き込みヘルパー関数
+    _execCommandClipboard(chatMessage, appState) {
+        try {
+            const textArea = document.createElement('textarea');
+            textArea.value = chatMessage;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            if (document.execCommand('copy')) {
+                appState.chatOutputFlag = true;
+                return true;
+            } else {
+                throw new Error('execCommand failed');
+            }
+        } catch (execErr) {
+            // 最終的にtmpChatLogTextに保存
+            appState.tmpChatLogText = chatMessage;
+            return false;
+        } finally {
+            // textAreaの後始末
+            const textArea = document.querySelector('textarea[style*="-999999px"]');
+            if (textArea && textArea.parentNode) {
+                textArea.parentNode.removeChild(textArea);
+            }
+        }
+    },
+
     // PinP環境専用のsaveChat（明示的にPinPウィンドウのdocumentを使用）
     saveChatFromPinP(appState, selectors, chatMemberNameElementClassName, pinpDocument) {
         const chatMessage = this.getChatTextFromPinP(appState, selectors, chatMemberNameElementClassName, pinpDocument);
@@ -46,28 +77,8 @@ const ChatManager = {
             navigator.clipboard.writeText(chatMessage).then(() => {
                 appState.chatOutputFlag = true;
             }).catch(err => {
-                // フォールバック: 従来のexecCommandを試行
-                try {
-                    const textArea = document.createElement('textarea');
-                    textArea.value = chatMessage;
-                    textArea.style.position = 'fixed';
-                    textArea.style.left = '-999999px';
-                    textArea.style.top = '-999999px';
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
-                    
-                    if (document.execCommand('copy')) {
-                        appState.chatOutputFlag = true;
-                    } else {
-                        throw new Error('execCommand failed');
-                    }
-                    
-                    document.body.removeChild(textArea);
-                } catch (execErr) {
-                    // 最終的にtmpChatLogTextに保存
-                    appState.tmpChatLogText = chatMessage;
-                }
+                // フォールバック: execCommandを試行
+                this._execCommandClipboard(chatMessage, appState);
             });
         }, 100); // 100ms待機
     },
@@ -81,27 +92,7 @@ const ChatManager = {
         }
         
         // フォーカス移動せずにexecCommandを直接使用
-        try {
-            const textArea = document.createElement('textarea');
-            textArea.value = chatMessage;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            textArea.style.top = '-999999px';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            if (document.execCommand('copy')) {
-                appState.chatOutputFlag = true;
-            } else {
-                throw new Error('execCommand failed');
-            }
-            
-            document.body.removeChild(textArea);
-        } catch (execErr) {
-            // 最終的にtmpChatLogTextに保存
-            appState.tmpChatLogText = chatMessage;
-        }
+        this._execCommandClipboard(chatMessage, appState);
     },
 
     // 一時保存されたチャットログをクリップボードに保存
