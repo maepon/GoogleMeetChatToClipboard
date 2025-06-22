@@ -131,6 +131,12 @@ window.addEventListener('message', (event) => {
 window.documentPictureInPicture.addEventListener('enter',event => {
     const pinpWindow = event.target.window;
     
+    // PinPウィンドウが正しく取得できているかチェック
+    if (!pinpWindow || !pinpWindow.document) {
+        console.error('PinPウィンドウが正しく取得できませんでした');
+        return;
+    }
+    
     pinpWindow.addEventListener('load', () => {
         // PinPウィンドウ読み込み完了時の処理
         
@@ -143,7 +149,6 @@ window.documentPictureInPicture.addEventListener('enter',event => {
                     (chatHeadingElement, observer) => {
                         this.checkAndCreateCopyButtonPinP(chatHeadingElement);
                     },
-                    false,
                     pinpWindow.document
                 );
             },
