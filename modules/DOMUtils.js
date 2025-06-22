@@ -3,41 +3,14 @@
 const DOMUtils = {
     // セレクタを元にDOMを検索し、存在したら指定のイベントを追加する関数
     observeAndAttachEvent(selector, event, eventHandler, disconnect) {
-        const observer = new MutationObserver((mutationsList, observer) => {
-            for (let mutation of mutationsList) {
-                if (mutation.type === 'childList') {
-                    const element = document.querySelector(selector);
-                    if (element) {
-                        if (!element.hasAttribute(`data-event-${event}`)) {
-                            element.addEventListener(event, eventHandler);
-                            element.setAttribute(`data-event-${event}`, 'true');
-                        }
-                        if (disconnect) observer.disconnect();
-                    }
-                }
-            }
-        });
-
-        observer.observe(document, {childList: true, subtree: true});
-        return observer;
+        return ObserverManager.observeAndAttachEvent(selector, event, eventHandler, disconnect);
     },
 
     // Picture-in-Picture専用のObserver関数
     observeAndAttachEventPinP(pinpWindow, selector, event, eventHandler, disconnect) {
-        const observer = new MutationObserver((mutationsList, observer) => {
-            for (let mutation of mutationsList) {
-                if (mutation.type === 'childList') {
-                    const element = pinpWindow.document.querySelector(selector);
-                    if (element) {
-                        // element.addEventListener(event, eventHandler); // Phase 4で実装予定：PinP内でのイベントリスナー追加
-                        if (disconnect) observer.disconnect();
-                    }
-                }
-            }
-        });
-
-        observer.observe(pinpWindow.document, {childList: true, subtree: true});
-        return observer;
+        return ObserverManager.observeForElement(selector, (element, observer) => {
+            // element.addEventListener(event, eventHandler); // Phase 4で実装予定：PinP内でのイベントリスナー追加
+        }, disconnect, pinpWindow.document);
     },
 
     // 指定されたセレクターの要素が存在するかチェック
