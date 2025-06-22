@@ -13,7 +13,7 @@
   "content_scripts": [
     {
       "matches": ["*://meet.google.com/*"],
-      "js": ["content.js"]
+      "js": ["modules/DOMUtils.js", "modules/ChatManager.js", "modules/UIManager.js", "content.js"]
     }
   ]
 }
