@@ -111,12 +111,68 @@ setInterval(getChatMemberName, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
 
 
 
-// ピクチャーインピクチャーのオープンを監視（Phase 2で本格実装予定）
+// PinPからのメッセージを受信するリスナー
+window.addEventListener('message', (event) => {
+    if (event.data.type === 'PINP_EVENT') {
+        // PinPからのイベントを受信した際の処理
+        if (event.data.eventType === 'click') {
+            if (event.data.selector === SELECTORS.exitButton) {
+                // PinP内の退出ボタンがクリックされた場合
+                saveChat();
+            } else if (event.data.selector === `#${IDS.copyButton}`) {
+                // PinP内のコピーボタンがクリックされた場合
+                saveChat();
+            }
+        }
+    }
+});
+
+// ピクチャーインピクチャーのオープンを監視
 window.documentPictureInPicture.addEventListener('enter',event => {
-    // Phase 2でPinP内チャット機能を実装予定
-    event.target.window.addEventListener('load', () => {
+    const pinpWindow = event.target.window;
+    
+    pinpWindow.addEventListener('load', () => {
         // PinPウィンドウ読み込み完了時の処理
-    })
-    DOMUtils.observeAndAttachEventPinP(event.target.window, SELECTORS.exitButton, 'click', saveChat, true);
+        
+        // PinP内でのUIManager初期化（コピーボタンの作成）
+        const pinpUIManager = {
+            initializeCopyButtonObserverPinP() {
+                // PinP内のチャットタイトル要素を監視してコピーボタンを作成
+                return ObserverManager.observeForUIChanges(
+                    SELECTORS.chatTitle,
+                    (chatHeadingElement, observer) => {
+                        this.checkAndCreateCopyButtonPinP(chatHeadingElement);
+                    },
+                    false,
+                    pinpWindow.document
+                );
+            },
+            
+            checkAndCreateCopyButtonPinP(chatHeadingElement) {
+                if (chatHeadingElement && !pinpWindow.document.querySelector(`#${IDS.copyButton}`)) {
+                    const copyButton = UIManager.createCopyButton(CONFIG, IDS);
+                    chatHeadingElement.after(copyButton);
+                }
+            }
+        };
+        
+        // PinP内でのコピーボタン監視を開始
+        pinpUIManager.initializeCopyButtonObserverPinP();
+        
+        // 退出ボタンのイベントリスナーを設定
+        DOMUtils.observeAndAttachEventPinP(pinpWindow, SELECTORS.exitButton, 'click', saveChat, true);
+        
+        // PinP内でのコピーボタンのイベントリスナーを設定
+        DOMUtils.observeAndAttachEventPinP(pinpWindow, `#${IDS.copyButton}`, 'click', saveChat, true);
+        
+        // PinPウィンドウのbeforeunloadイベント対応
+        pinpWindow.addEventListener('beforeunload', (e) => {
+            const chatText = ChatManager.getChatText(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME);
+            if (chatText !== '') {
+                AppState.tmpChatLogText = chatText;
+                e.returnValue = 'Remove?';
+            }
+        });
+    });
 })
 
