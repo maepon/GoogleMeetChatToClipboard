@@ -1,0 +1,18 @@
+{
+  "name": "google-meet-chat-to-clipboard",
+  "version": "5.0.0",
+  "description": "Chrome extension to copy Google Meet chat to clipboard on exit",
+  "scripts": {
+    "build": "npm run build:clean && npm run build:zip",
+    "build:clean": "rm -rf dist && mkdir -p dist",
+    "build:zip": "zip -r dist/google-meet-chat-to-clipboard-v${npm_package_version}.zip manifest.json content.js modules/ images/ -x '*.DS_Store'",
+    "build:local": "npm run build:clean && npm run build:zip:local",
+    "build:zip:local": "zip -r dist/google-meet-chat-to-clipboard-v$(node -p 'require(\"./package.json\").version').zip manifest.json content.js modules/ images/ -x '*.DS_Store'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maepon/GoogleMeetChatToClipboard.git"
+  },
+  "license": "MIT",
+  "private": true
+}
