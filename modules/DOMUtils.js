@@ -8,7 +8,10 @@ const DOMUtils = {
                 if (mutation.type === 'childList') {
                     const element = document.querySelector(selector);
                     if (element) {
-                        element.addEventListener(event, eventHandler);
+                        if (!element.hasAttribute(`data-event-${event}`)) {
+                            element.addEventListener(event, eventHandler);
+                            element.setAttribute(`data-event-${event}`, 'true');
+                        }
                         if (disconnect) observer.disconnect();
                     }
                 }
