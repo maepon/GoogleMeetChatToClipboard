@@ -144,8 +144,9 @@ window.documentPictureInPicture.addEventListener('enter',event => {
     
     console.log('PinPウィンドウ取得成功', pinpWindow);
     
-    pinpWindow.addEventListener('load', () => {
-        console.log('PinPウィンドウ load イベント発生');
+    // PinP初期化処理関数
+    const initializePinP = () => {
+        console.log('PinP初期化処理開始');
         // PinPウィンドウ読み込み完了時の処理
         
         // PinP内でのUIManager初期化（コピーボタンの作成）
@@ -193,6 +194,18 @@ window.documentPictureInPicture.addEventListener('enter',event => {
                 e.returnValue = 'Remove?';
             }
         });
-    });
+    };
+    
+    // PinPウィンドウが既に読み込まれている場合は即座に初期化
+    if (pinpWindow.document.readyState === 'complete') {
+        console.log('PinPウィンドウは既に読み込み済み、即座に初期化');
+        initializePinP();
+    } else {
+        console.log('PinPウィンドウload待機中');
+        pinpWindow.addEventListener('load', () => {
+            console.log('PinPウィンドウ load イベント発生');
+            initializePinP();
+        });
+    }
 })
 
