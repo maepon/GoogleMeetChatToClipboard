@@ -28,12 +28,18 @@ const ChatManager = {
     // チャットテキストを取得
     getChatText(appState, selectors, chatMemberNameElementClassName) {
         console.log('getChatText開始');
-        // PinPから呼び出された場合は、メインウィンドウのDOMを参照
-        const targetDocument = window.parent && window.parent !== window ? window.parent.document : document;
-        console.log('対象ドキュメント:', targetDocument === document ? 'メインウィンドウ' : 'PinPウィンドウ');
+        console.log('使用するセレクター:', selectors.chatMessage);
         
-        this.getSelfLabel(appState, selectors, targetDocument);
-        const chatMessages = [...targetDocument.querySelectorAll(selectors.chatMessage)].map(el => {
+        this.getSelfLabel(appState, selectors);
+        const allElements = document.querySelectorAll(selectors.chatMessage);
+        console.log('querySelector結果:', allElements.length, '個の要素が見つかりました');
+        
+        // デバッグ: 最初の数個の要素を確認
+        Array.from(allElements).slice(0, 3).forEach((el, index) => {
+            console.log(`要素 ${index}:`, el.tagName, el.className, el.innerText.substring(0, 50));
+        });
+        
+        const chatMessages = [...allElements].map(el => {
             if (this.isSelfNameAndLabelReady(appState) && 
                 el.classList.contains(chatMemberNameElementClassName) && 
                 el.innerText.toString() === appState.selfNameLabel) {
@@ -41,13 +47,13 @@ const ChatManager = {
             }
             return el.innerText;
         });
-        console.log('見つかったチャットメッセージ数:', chatMessages.length);
+        console.log('変換後のチャットメッセージ数:', chatMessages.length);
         return chatMessages.length ? chatMessages.join('\n') : '';
     },
 
     // 自分の名前と自分の名前として表示されるラベルを取得する
-    getSelfLabel(appState, selectors, targetDocument = document) {
-        const selfNameElement = targetDocument.querySelector(selectors.selfNameElement);
+    getSelfLabel(appState, selectors) {
+        const selfNameElement = document.querySelector(selectors.selfNameElement);
         if (selfNameElement) {
             appState.selfNameLabel = selfNameElement.textContent;
         }
