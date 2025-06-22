@@ -113,14 +113,18 @@ setInterval(getChatMemberName, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
 
 // PinPからのメッセージを受信するリスナー
 window.addEventListener('message', (event) => {
+    console.log('メッセージ受信', event.data);
     if (event.data.type === 'PINP_EVENT') {
+        console.log('PinPイベント受信', event.data);
         // PinPからのイベントを受信した際の処理
         if (event.data.eventType === 'click') {
             if (event.data.selector === SELECTORS.exitButton) {
                 // PinP内の退出ボタンがクリックされた場合
+                console.log('PinP退出ボタンクリック処理実行');
                 saveChat();
             } else if (event.data.selector === `#${IDS.copyButton}`) {
                 // PinP内のコピーボタンがクリックされた場合
+                console.log('PinPコピーボタンクリック処理実行');
                 saveChat();
             }
         }
@@ -129,6 +133,7 @@ window.addEventListener('message', (event) => {
 
 // ピクチャーインピクチャーのオープンを監視
 window.documentPictureInPicture.addEventListener('enter',event => {
+    console.log('PinP enter イベント発生', event);
     const pinpWindow = event.target.window;
     
     // PinPウィンドウが正しく取得できているかチェック
@@ -137,16 +142,21 @@ window.documentPictureInPicture.addEventListener('enter',event => {
         return;
     }
     
+    console.log('PinPウィンドウ取得成功', pinpWindow);
+    
     pinpWindow.addEventListener('load', () => {
+        console.log('PinPウィンドウ load イベント発生');
         // PinPウィンドウ読み込み完了時の処理
         
         // PinP内でのUIManager初期化（コピーボタンの作成）
         const pinpUIManager = {
             initializeCopyButtonObserverPinP() {
+                console.log('PinP コピーボタンObserver開始');
                 // PinP内のチャットタイトル要素を監視してコピーボタンを作成
                 return ObserverManager.observeForUIChanges(
                     SELECTORS.chatTitle,
                     (chatHeadingElement, observer) => {
+                        console.log('PinP チャットタイトル要素発見', chatHeadingElement);
                         this.checkAndCreateCopyButtonPinP(chatHeadingElement);
                     },
                     pinpWindow.document
@@ -154,9 +164,12 @@ window.documentPictureInPicture.addEventListener('enter',event => {
             },
             
             checkAndCreateCopyButtonPinP(chatHeadingElement) {
+                console.log('PinP コピーボタンチェック', chatHeadingElement);
                 if (chatHeadingElement && !pinpWindow.document.querySelector(`#${IDS.copyButton}`)) {
+                    console.log('PinP コピーボタン作成中');
                     const copyButton = UIManager.createCopyButton(CONFIG, IDS);
                     chatHeadingElement.after(copyButton);
+                    console.log('PinP コピーボタン作成完了');
                 }
             }
         };
@@ -165,9 +178,11 @@ window.documentPictureInPicture.addEventListener('enter',event => {
         pinpUIManager.initializeCopyButtonObserverPinP();
         
         // 退出ボタンのイベントリスナーを設定
+        console.log('PinP 退出ボタンObserver開始');
         DOMUtils.observeAndAttachEventPinP(pinpWindow, SELECTORS.exitButton, 'click', saveChat, true);
         
         // PinP内でのコピーボタンのイベントリスナーを設定
+        console.log('PinP コピーボタンイベントObserver開始');
         DOMUtils.observeAndAttachEventPinP(pinpWindow, `#${IDS.copyButton}`, 'click', saveChat, true);
         
         // PinPウィンドウのbeforeunloadイベント対応
