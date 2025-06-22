@@ -1,3 +1,30 @@
+// 設定値の外部化
+const CONFIG = {
+    TIMEOUTS: {
+        CHAT_TITLE_CHECK: 500,
+        MEMBER_NAME_CHECK: 300,
+        PINP_ELEMENT_CHECK: 5000
+    },
+    STYLES: {
+        COPY_BUTTON: {
+            backgroundColor: 'rgba(0, 0, 0, 0)',
+            border: 'none',
+            padding: '12px',
+            cursor: 'pointer',
+            borderRadius: '50%'
+        },
+        COPY_BUTTON_HOVER: 'rgba(0, 0, 0, 0.05)',
+        COPY_BUTTON_NORMAL: 'rgba(0, 0, 0, 0)',
+        TEXTAREA: {
+            width: '300px',
+            height: '180px'
+        },
+        COPY_ICON: {
+            color: 'rgb(95, 99, 104)'
+        }
+    }
+};
+
 const CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME = 'poVWob';
 
 const SELECTORS = {
@@ -13,19 +40,17 @@ const SELECTORS = {
 };
 
 const IDS = {
-    copyButton: 'GMCTC-copyButton', chatLogTextArea: 'GMCTC-onRemoveChatLogTextArea'
+    copyButton: 'GMCTC-copyButton', 
+    chatLogTextArea: 'GMCTC-onRemoveChatLogTextArea'
 };
-// チャットログを保存するための変数
-let tmpChatLogText = '';
 
-// チャットログ表示フラグ
-let chatOutputFlag = false;
-
-// 自分の名前を保存するための変数
-let selfName = '';
-
-// 自分としてチャットに表示されるラベルを保存するための変数
-let selfNameLabel = '';
+// 状態管理オブジェクト
+const AppState = {
+    tmpChatLogText: '',
+    chatOutputFlag: false,
+    selfName: '',
+    selfNameLabel: ''
+};
 
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Enter' && event.isComposing) {
@@ -56,21 +81,21 @@ function observeAndAttachEvent(selector, event, eventHandler, disconnect) {
 // チャット要素を探してクリップボードに保存
 function saveChat() {
     let chatMessage = getChatText();
-    chatOutputFlag = true;
+    AppState.chatOutputFlag = true;
     if (chatMessage === '') return;
     navigator.clipboard.writeText(chatMessage);
 }
 
 function saveChatLog() {
-    if (tmpChatLogText === '') return;
-    navigator.clipboard.writeText(tmpChatLogText);
+    if (AppState.tmpChatLogText === '') return;
+    navigator.clipboard.writeText(AppState.tmpChatLogText);
 }
 
 function getChatText() {
     getSelfLabel();
     let chatMessages = [...document.querySelectorAll(SELECTORS.chatMessage)].map(el => {
-        if (isSelfNameAndLabelReady() && el.classList.contains(CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME) && el.innerText.toString() === selfNameLabel) {
-            return selfName;
+        if (isSelfNameAndLabelReady() && el.classList.contains(CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME) && el.innerText.toString() === AppState.selfNameLabel) {
+            return AppState.selfName;
         }
         return el.innerText;
     });
@@ -81,20 +106,20 @@ function getChatText() {
 function getSelfLabel() {
     const selfNameElement = document.querySelector(SELECTORS.selfNameElement);
     if (selfNameElement) {
-        selfNameLabel = selfNameElement.textContent;
+        AppState.selfNameLabel = selfNameElement.textContent;
     }
 }
 
 function getChatMemberName() {
     const chatMemberNameElement = document.querySelector(SELECTORS.chatMemberName);
     if (chatMemberNameElement && chatMemberNameElement.getAttribute('title')) {
-        selfName = chatMemberNameElement.getAttribute('title');
+        AppState.selfName = chatMemberNameElement.getAttribute('title');
     }
 }
 
 // 自分の名前をラベルが保存されているかを確認する
 function isSelfNameAndLabelReady() {
-    return selfName !== '' && selfNameLabel !== '';
+    return AppState.selfName !== '' && AppState.selfNameLabel !== '';
 }
 
 observeAndAttachEvent(SELECTORS.exitButton, 'click', saveChat, true);
@@ -106,12 +131,12 @@ const removedMessageObserver = new MutationObserver((mutationsList, observer) =>
         if (mutation.type === 'childList') {
             const removeMessageElement = document.querySelector(SELECTORS.removedMessage);
             if (removeMessageElement) {
-                if (chatOutputFlag === false) {
+                if (AppState.chatOutputFlag === false) {
                     const textarea = document.createElement('textarea');
                     textarea.id = IDS.chatLogTextArea;
-                    textarea.style.width = '300px';
-                    textarea.style.height = '180px';
-                    textarea.value = tmpChatLogText;
+                    textarea.style.width = CONFIG.STYLES.TEXTAREA.width;
+                    textarea.style.height = CONFIG.STYLES.TEXTAREA.height;
+                    textarea.value = AppState.tmpChatLogText;
                     const copyButton = document.createElement('button');
                     copyButton.textContent = 'Copy';
                     copyButton.type = 'button';
@@ -121,7 +146,7 @@ const removedMessageObserver = new MutationObserver((mutationsList, observer) =>
                     const wrapDiv = document.createElement('div');
                     wrapDiv.append(textarea, pElement);
                     removeMessageElement.after(wrapDiv)
-                    chatOutputFlag = true;
+                    AppState.chatOutputFlag = true;
                 }
                 observer.disconnect();  // 通話から退出ボタンが見つかったら監視を停止
             }
@@ -134,7 +159,7 @@ removedMessageObserver.observe(document, {childList: true, subtree: true})
 window.addEventListener('beforeunload', (e) => {
     const chatText = getChatText()
     if (chatText !== '') {
-        tmpChatLogText = chatText
+        AppState.tmpChatLogText = chatText
         e.returnValue = 'Remove?';
     }
 });
@@ -147,7 +172,7 @@ function isChatTitle() {
             chatHeadingElement.after(createCopyButton());
         }
     }
-    setTimeout(isChatTitle, 500);
+    setTimeout(isChatTitle, CONFIG.TIMEOUTS.CHAT_TITLE_CHECK);
 }
 
 // ボタンの色を変更するイベント
@@ -159,10 +184,10 @@ function handleCopyButtonColorChange(e, color) {
 function createCopyButton() {
     const copyIconSpan = createCopyIconSpan();
     const copyButton = createButtonWithIcon(copyIconSpan);
-    copyButton.addEventListener('mouseenter', (e) => handleCopyButtonColorChange(e, 'rgba(0, 0, 0, 0.05)'));
-    copyButton.addEventListener('mouseleave', (e) => handleCopyButtonColorChange(e, 'rgba(0, 0, 0, 0)'));
-    copyButton.addEventListener('mousedown', (e) => handleCopyButtonColorChange(e, 'rgba(0, 0, 0, 0)'));
-    copyButton.addEventListener('mouseup', (e) => handleCopyButtonColorChange(e, 'rgba(0, 0, 0, 0.05)'));
+    copyButton.addEventListener('mouseenter', (e) => handleCopyButtonColorChange(e, CONFIG.STYLES.COPY_BUTTON_HOVER));
+    copyButton.addEventListener('mouseleave', (e) => handleCopyButtonColorChange(e, CONFIG.STYLES.COPY_BUTTON_NORMAL));
+    copyButton.addEventListener('mousedown', (e) => handleCopyButtonColorChange(e, CONFIG.STYLES.COPY_BUTTON_NORMAL));
+    copyButton.addEventListener('mouseup', (e) => handleCopyButtonColorChange(e, CONFIG.STYLES.COPY_BUTTON_HOVER));
     const wrapDiv = document.createElement('div');
     wrapDiv.append(copyButton);
     return wrapDiv;
@@ -173,7 +198,7 @@ function createCopyIconSpan() {
     const copyIconSpan = document.createElement('span');
     copyIconSpan.classList.add('google-material-icons');
     copyIconSpan.textContent = 'content_copy';
-    copyIconSpan.style.color = 'rgb(95, 99, 104)';
+    copyIconSpan.style.color = CONFIG.STYLES.COPY_ICON.color;
     return copyIconSpan;
 }
 
@@ -181,15 +206,43 @@ function createCopyIconSpan() {
 function createButtonWithIcon(iconElement) {
     const copyButton = document.createElement('button');
     copyButton.type = 'button';
-    copyButton.style.backgroundColor = 'rgba(0, 0, 0, 0)';
-    copyButton.style.border = 'none';
-    copyButton.style.padding = '12px';
-    copyButton.style.cursor = 'pointer';
-    copyButton.style.borderRadius = '50%';
+    copyButton.style.backgroundColor = CONFIG.STYLES.COPY_BUTTON.backgroundColor;
+    copyButton.style.border = CONFIG.STYLES.COPY_BUTTON.border;
+    copyButton.style.padding = CONFIG.STYLES.COPY_BUTTON.padding;
+    copyButton.style.cursor = CONFIG.STYLES.COPY_BUTTON.cursor;
+    copyButton.style.borderRadius = CONFIG.STYLES.COPY_BUTTON.borderRadius;
     copyButton.append(iconElement);
     copyButton.id = IDS.copyButton;
     return copyButton;
 }
 
-setTimeout(isChatTitle, 500);
-setInterval(getChatMemberName, 300);
+setTimeout(isChatTitle, CONFIG.TIMEOUTS.CHAT_TITLE_CHECK);
+setInterval(getChatMemberName, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
+
+
+function observeAndAttachEventPinP(pinpWindow, selector, event, eventHandler, disconnect){
+    const observer = new MutationObserver((mutationsList, observer) => {
+        for (let mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                const element = pinpWindow.document.querySelector(selector);
+                if (element) {
+                    // element.addEventListener(event, eventHandler); // Phase 2で実装予定：PinP内でのイベントリスナー追加
+                    if (disconnect) observer.disconnect();
+                }
+            }
+        }
+    });
+
+    observer.observe(pinpWindow.document, {childList: true, subtree: true});
+    return observer;
+}
+
+// ピクチャーインピクチャーのオープンを監視（Phase 2で本格実装予定）
+window.documentPictureInPicture.addEventListener('enter',event => {
+    // Phase 2でPinP内チャット機能を実装予定
+    event.target.window.addEventListener('load', () => {
+        // PinPウィンドウ読み込み完了時の処理
+    })
+    observeAndAttachEventPinP(event.target.window, SELECTORS.exitButton, 'click', saveChat, true);
+})
+
