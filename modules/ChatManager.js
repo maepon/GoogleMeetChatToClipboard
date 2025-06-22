@@ -28,11 +28,23 @@ const ChatManager = {
     // チャットテキストを取得
     getChatText(appState, selectors, chatMemberNameElementClassName) {
         console.log('getChatText開始');
+        console.log('現在のdocument:', document.title, document.URL);
         console.log('使用するセレクター:', selectors.chatMessage);
         
+        // 各セレクターを個別にテスト
+        const selector1 = '[jsname="dTKtvb"]';
+        const selector2 = '[jsname="Ypafjf"] [jsname="biJjHb"]';
+        const selector3 = '.poVWob';
+        
+        console.log('個別セレクターテスト:');
+        console.log('- jsname="dTKtvb":', document.querySelectorAll(selector1).length, '個');
+        console.log('- jsname="Ypafjf" jsname="biJjHb":', document.querySelectorAll(selector2).length, '個');
+        console.log('- .poVWob:', document.querySelectorAll(selector3).length, '個');
+        
+        // 全体のセレクター
         this.getSelfLabel(appState, selectors);
         const allElements = document.querySelectorAll(selectors.chatMessage);
-        console.log('querySelector結果:', allElements.length, '個の要素が見つかりました');
+        console.log('全体querySelector結果:', allElements.length, '個の要素が見つかりました');
         
         // デバッグ: 最初の数個の要素を確認
         Array.from(allElements).slice(0, 3).forEach((el, index) => {
