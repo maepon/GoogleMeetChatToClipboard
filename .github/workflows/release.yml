@@ -43,12 +43,10 @@ jobs:
         unzip -l "dist/google-meet-chat-to-clipboard-v${{ steps.get_version.outputs.version }}.zip"
         
     - name: Create Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.get_version.outputs.tag }}
-        release_name: Release ${{ steps.get_version.outputs.tag }}
+        name: Release ${{ steps.get_version.outputs.tag }}
         body: |
           Chrome Web Store package for version ${{ steps.get_version.outputs.version }}
           
@@ -57,16 +55,8 @@ jobs:
           2. Upload to Chrome Web Store or load as unpacked extension
           
           ## Changes
-          See [CHANGELOG](CHANGELOG.md) for details.
+          See [README](README.md) for details.
         draft: false
         prerelease: false
-        
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/google-meet-chat-to-clipboard-v${{ steps.get_version.outputs.version }}.zip
-        asset_name: google-meet-chat-to-clipboard-v${{ steps.get_version.outputs.version }}.zip
-        asset_content_type: application/zip
+        files: |
+          dist/google-meet-chat-to-clipboard-v${{ steps.get_version.outputs.version }}.zip
