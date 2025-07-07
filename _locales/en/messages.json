@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "Google Meet Chat to Clipboard",
+    "description": "Extension name"
+  },
+  "appDesc": {
+    "message": "Save Google Meet chat messages to clipboard with one click. Supports Picture-in-Picture mode.",
+    "description": "Extension description for Chrome Web Store"
+  }
+}

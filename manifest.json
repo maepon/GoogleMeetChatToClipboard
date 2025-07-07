@@ -1,7 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Google Meet Chat to Clipboard",
-  "version": "5.0.0",
+  "name": "__MSG_appName__",
+  "description": "__MSG_appDesc__",
+  "version": "5.0.1",
+  "default_locale": "en",
   "permissions": ["clipboardWrite"],
   "action": {
     "default_icon": {

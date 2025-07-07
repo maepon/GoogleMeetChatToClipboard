@@ -38,6 +38,7 @@ jobs:
           content.js \
           modules/ \
           images/ \
+          _locales/ \
           -x "*.DS_Store"
           
     - name: Verify package contents

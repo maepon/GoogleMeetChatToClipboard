@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "Google Meet Chat to Clipboard",
+    "description": "拡張機能名"
+  },
+  "appDesc": {
+    "message": "Google Meetのチャットの内容をクリップボードに保存する機能を追加する拡張機能です。",
+    "description": "Chrome Web Store用の拡張機能説明文"
+  }
+}
