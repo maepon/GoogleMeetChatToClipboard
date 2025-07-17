@@ -23,7 +23,7 @@ const ChatManager = {
             return;
         }
         navigator.clipboard.writeText(chatMessage).catch(err => {
-            console.error('クリップボードへの書き込み失敗:', err);
+            console.error(chrome.i18n.getMessage('clipboardWriteError'), err);
         });
     },
 

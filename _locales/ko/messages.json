@@ -1,0 +1,18 @@
+{
+  "appName": {
+    "message": "Google Meet Chat to Clipboard",
+    "description": "확장 프로그램 이름"
+  },
+  "appDesc": {
+    "message": "Google Meet 채팅 메시지를 클립보드에 한 번의 클릭으로 저장합니다. 화면 속 화면 모드를 지원합니다.",
+    "description": "Chrome 웹 스토어용 확장 프로그램 설명"
+  },
+  "copyButtonText": {
+    "message": "복사",
+    "description": "종료 후 UI에 표시되는 복사 버튼의 텍스트"
+  },
+  "clipboardWriteError": {
+    "message": "클립보드에 쓰기 실패:",
+    "description": "클립보드 쓰기가 실패했을 때의 오류 메시지"
+  }
+}

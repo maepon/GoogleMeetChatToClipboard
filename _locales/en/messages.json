@@ -6,5 +6,13 @@
   "appDesc": {
     "message": "Save Google Meet chat messages to clipboard with one click. Supports Picture-in-Picture mode.",
     "description": "Extension description for Chrome Web Store"
+  },
+  "copyButtonText": {
+    "message": "Copy",
+    "description": "Text displayed on the copy button in the exited UI"
+  },
+  "clipboardWriteError": {
+    "message": "Failed to write to clipboard:",
+    "description": "Error message when clipboard writing fails"
   }
 }

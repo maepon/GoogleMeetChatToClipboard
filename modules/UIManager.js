@@ -75,7 +75,7 @@ const UIManager = {
         textarea.value = chatLogText;
         
         const copyButton = document.createElement('button');
-        copyButton.textContent = 'Copy';
+        copyButton.textContent = chrome.i18n.getMessage('copyButtonText');
         copyButton.type = 'button';
         copyButton.addEventListener('click', saveChatLogCallback);
         
