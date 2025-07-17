@@ -117,6 +117,13 @@ The extension requires minimal permissions:
   - PinPウィンドウのbeforeunloadイベント対応
   - 統合アプローチによる既存機能との一貫性を保持
 
+- **Phase 5: Chrome Web Store登録準備** ✅
+  - 多言語対応（日本語、英語、韓国語）の実装完了
+  - i18n対応によるメッセージの国際化
+  - プライバシーポリシーの作成完了
+  - UI要素のローカライゼーション（コピーボタン、エラーメッセージ）
+  - Chrome Web Store登録に必要な要件の完備
+
 ### 進行中・予定 / In Progress / Planned
 - **将来的な改善項目** 📋
   - エラーハンドリングの強化

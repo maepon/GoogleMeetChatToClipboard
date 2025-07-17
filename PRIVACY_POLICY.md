@@ -3,7 +3,7 @@
 ## Google Meet Chat to Clipboard Extension
 
 **Last Updated:** July 17, 2025  
-**Version:** 5.0.1
+**Version:** 5.1.0
 
 ### Overview
 
