@@ -1,0 +1,18 @@
+{
+  "appName": {
+    "message": "Google Meet Chat to Clipboard",
+    "description": "Nombre de la extensión"
+  },
+  "appDesc": {
+    "message": "Copia los mensajes del chat de Google Meet en el portapapeles con un solo clic. Compatible con el modo Imagen en imagen (Picture-in-Picture).",
+    "description": "Descripción de la extensión para Chrome Web Store"
+  },
+  "copyButtonText": {
+    "message": "Copiar",
+    "description": "Texto mostrado en el botón de copiar en la interfaz de salida"
+  },
+  "clipboardWriteError": {
+    "message": "Error al copiar al portapapeles:",
+    "description": "Mensaje de error cuando falla la escritura en el portapapeles"
+  }
+}
