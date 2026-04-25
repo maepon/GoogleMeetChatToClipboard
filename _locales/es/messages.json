@@ -4,7 +4,7 @@
     "description": "Nombre de la extensión"
   },
   "appDesc": {
-    "message": "Copia los mensajes del chat de Google Meet en el portapapeles con un solo clic. Compatible con el modo Imagen en imagen (Picture-in-Picture).",
+    "message": "Copia el chat de Meet al portapapeles. Diseñada para cuentas personales de Google. Botón de un clic y copia automática.",
     "description": "Descripción de la extensión para Chrome Web Store"
   },
   "copyButtonText": {

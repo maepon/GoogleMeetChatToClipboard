@@ -4,7 +4,7 @@
     "description": "Extension name"
   },
   "appDesc": {
-    "message": "Save Google Meet chat messages to clipboard with one click. Supports Picture-in-Picture mode.",
+    "message": "Save Google Meet chat to clipboard. Optimized for personal Google accounts. Features 1-click copy and auto-save.",
     "description": "Extension description for Chrome Web Store"
   },
   "copyButtonText": {

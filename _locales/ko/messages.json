@@ -4,7 +4,7 @@
     "description": "확장 프로그램 이름"
   },
   "appDesc": {
-    "message": "Google Meet 채팅 메시지를 클립보드에 한 번의 클릭으로 저장합니다. 화면 속 화면 모드를 지원합니다.",
+    "message": "Google Meet 채팅을 클립보드에 복사. 개인용 Google 계정 전용. 1클릭 복사 및 퇴장 시 자동 저장 기능 지원.",
     "description": "Chrome 웹 스토어용 확장 프로그램 설명"
   },
   "copyButtonText": {

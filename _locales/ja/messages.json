@@ -4,7 +4,7 @@
     "description": "拡張機能名"
   },
   "appDesc": {
-    "message": "Google Meetのチャットの内容をクリップボードに保存する機能を追加する拡張機能です。",
+    "message": "Google Meetのチャットをコピー。個人用Googleアカウント向け。1クリックコピーや退出時の自動保存に対応。",
     "description": "Chrome Web Store用の拡張機能説明文"
   },
   "copyButtonText": {
