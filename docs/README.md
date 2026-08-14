@@ -10,6 +10,11 @@
 - **`リファクタリングプラン.md`**: Phase 1〜4の段階的リファクタリング計画
 - **`PinP対応プラン.md`**: Picture-in-Picture機能対応の実装プラン
 
+### `/v6/`
+Google Meet の新DOM向け selector 再設計用の作業領域
+
+- **`selector-workspace.md`**: 旧 selector と新 selector を並べて管理する作業シート
+
 ## プロジェクトの主要ドキュメント
 
 ### ルートディレクトリ
