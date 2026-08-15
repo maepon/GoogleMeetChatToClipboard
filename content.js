@@ -154,9 +154,9 @@ const removedMessageObserver = ObserverManager.observeForElement(
             return;
         }
 
-        const activeContainer = (AppState.chatContainerRoomId === AppState.currentRoomId && AppState.chatContainerElement)
+        const activeContainer = (AppState.chatContainerRoomId === AppState.currentRoomId)
             ? AppState.chatContainerElement
-            : document.querySelector(SELECTORS.chatContainer);
+            : null;
 
         if (!activeContainer || !activeContainer.contains(removeMessageElement)) {
             return;
