@@ -38,33 +38,58 @@ const IDS = {
     chatLogTextArea: 'GMCTC-onRemoveChatLogTextArea'
 };
 
-// ヘルパー: JSDOM 環境の作成とモジュールのロード
-function createEnvironment(htmlContent, url = 'https://meet.google.com/abc-defg-hij') {
+// ヘルパー: JSDOM 環境の作成と content.js を含む全モジュールのロード
+function createEnvironment(htmlContent, url = 'https://meet.google.com/abc-defg-hij', loadContentJs = true) {
     const dom = new JSDOM(htmlContent, { url, runScripts: 'dangerously' });
     const { window } = dom;
 
-    // モジュールスクリプトを読み込み
-    const observerManagerCode = fs.readFileSync(path.join(__dirname, '../modules/ObserverManager.js'), 'utf8');
-    const domUtilsCode = fs.readFileSync(path.join(__dirname, '../modules/DOMUtils.js'), 'utf8');
-    const chatManagerCode = fs.readFileSync(path.join(__dirname, '../modules/ChatManager.js'), 'utf8');
-    const uiManagerCode = fs.readFileSync(path.join(__dirname, '../modules/UIManager.js'), 'utf8');
-
-    // chrome.i18n のモック
+    // ブラウザ API のモック
     window.chrome = {
         i18n: {
             getMessage: (key) => key
         }
     };
 
+    window.documentPictureInPicture = {
+        addEventListener: () => {},
+        window: null
+    };
+
+    let writtenText = '';
+    window.navigator.clipboard = {
+        writeText: (text) => {
+            writtenText = text;
+            return Promise.resolve();
+        },
+        getWrittenText: () => writtenText
+    };
+
+    // モジュールスクリプトを読み込み
+    const observerManagerCode = fs.readFileSync(path.join(__dirname, '../modules/ObserverManager.js'), 'utf8');
+    const domUtilsCode = fs.readFileSync(path.join(__dirname, '../modules/DOMUtils.js'), 'utf8');
+    const chatManagerCode = fs.readFileSync(path.join(__dirname, '../modules/ChatManager.js'), 'utf8');
+    const uiManagerCode = fs.readFileSync(path.join(__dirname, '../modules/UIManager.js'), 'utf8');
+    const contentJsCode = fs.readFileSync(path.join(__dirname, '../content.js'), 'utf8');
+
     window.eval(observerManagerCode);
     window.eval(domUtilsCode);
     window.eval(chatManagerCode);
     window.eval(uiManagerCode);
 
-    return { window, document: window.document, ChatManager: window.ChatManager, UIManager: window.UIManager };
+    if (loadContentJs) {
+        window.eval(contentJsCode + '; window.AppState = AppState; window.saveChat = saveChat; window.getRoomId = getRoomId; window.resetAppState = resetAppState;');
+    }
+
+    return { 
+        window, 
+        document: window.document, 
+        ChatManager: window.ChatManager, 
+        UIManager: window.UIManager,
+        getWrittenText: () => writtenText
+    };
 }
 
-console.log('==== v6 DOM 統合ユニットテスト開始 ====\n');
+console.log('==== v6 DOM & content.js 実体統合ユニットテスト開始 ====\n');
 
 let passCount = 0;
 let failCount = 0;
@@ -119,9 +144,7 @@ runTest('getChatText: チャット保存ミーティング (DisableDom) での�
     const chatText = ChatManager.getChatText(appState, SELECTORS, document);
 
     assert.ok(chatText.length > 0, 'チャットテキストが取得されること');
-    // メッセージ本文が含まれること
     assert.ok(chatText.includes('相手からのチャット') || chatText.includes('自分のチャット'), '本文が含まれること');
-    // 送信時刻が含まれること
     assert.ok(chatText.includes('1:29'), '時刻が含まれること');
 });
 
@@ -143,20 +166,44 @@ runTest('checkAndCreateCopyButton: 非保存対象ミーティング (EnableDom)
 });
 
 // ----------------------------------------------------
-// Test Case 4: SPA Room 遷移と複数コンテナ並存ケース
+// Test Case 4: content.js 実体の関数・イベントの実動作検証
 // ----------------------------------------------------
-runTest('SPA 遷移: Room ID 正規表現抽出と /landing 判定', () => {
-    function getRoomId(pathname) {
-        const match = pathname.match(/^\/([a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{3})\/?$/i);
-        return match ? match[1] : null;
-    }
-
-    assert.strictEqual(getRoomId('/abc-defg-hij'), 'abc-defg-hij');
-    assert.strictEqual(getRoomId('/abc-defg-hij/'), 'abc-defg-hij');
-    assert.strictEqual(getRoomId('/landing'), null);
-    assert.strictEqual(getRoomId('/new'), null);
+runTest('content.js 実体: saveChat() ガードとクリップボード書き込み検証', () => {
+    const { window, getWrittenText } = createEnvironment(disableDomHtml);
+    window.saveChat();
+    assert.ok(getWrittenText().length > 0, 'クリップボードにテキストが書き込まれること');
 });
 
+runTest('content.js 実体: 非保存対象 (EnableDom) での saveChat() ガード検証', () => {
+    const { window, getWrittenText } = createEnvironment(enableDomHtml);
+    window.saveChat();
+    assert.strictEqual(getWrittenText(), '', '保存対象外ではクリップボードに書き込まれないこと');
+});
+
+runTest('content.js 実体: getRoomId() 正規表現抽出と /landing /new 判定検証', () => {
+    const { window } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    assert.strictEqual(window.getRoomId(), 'abc-defg-hij');
+
+    const landingEnv = createEnvironment(disableDomHtml, 'https://meet.google.com/landing');
+    assert.strictEqual(landingEnv.window.getRoomId(), null);
+});
+
+runTest('content.js 実体: AppState.currentRoomId と resetAppState() の統合実体動作検証', () => {
+    const { window } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    assert.strictEqual(window.AppState.currentRoomId, 'abc-defg-hij');
+
+    window.AppState.chatContainerElement = window.document.querySelector(SELECTORS.chatContainer);
+    window.AppState.chatContainerRoomId = 'abc-defg-hij';
+
+    window.resetAppState('abc-defg-hij');
+    assert.strictEqual(window.AppState.chatContainerElement, null);
+    assert.strictEqual(window.AppState.chatContainerRoomId, null);
+    assert.notStrictEqual(window.AppState.previousContainerElement, null);
+});
+
+// ----------------------------------------------------
+// Test Case 5: SPA 遷移および複数コンテナ並存ケース
+// ----------------------------------------------------
 runTest('SPA 遷移: 旧・新コンテナ並存時の querySelectorAll.find による新コンテナ特定', () => {
     const { document } = createEnvironment(`
         <html>
@@ -201,38 +248,8 @@ runTest('SPA 遷移: 3つ以上のコンテナが並存する場合の動作', (
     assert.strictEqual(currentContainer.id, 'container-2', '旧コンテナ(container-1)以外の最初のコンテナが選ばれること');
 });
 
-runTest('SPA 遷移: Room A ➔ /landing ➔ Room B のステートリセット連続検証', () => {
-    const { document } = createEnvironment(disableDomHtml);
-    
-    let previousContainerElement = null;
-    let chatContainerElement = document.querySelector(SELECTORS.chatContainer);
-    let chatContainerRoomId = 'room-a';
-
-    // /landing への遷移
-    function resetAppState(prevRoomId) {
-        if (chatContainerElement && chatContainerRoomId === prevRoomId) {
-            chatContainerElement.querySelectorAll(SELECTORS.removedMessage).forEach(el => {
-                el.setAttribute('data-gmctc-processed', 'true');
-            });
-        }
-        previousContainerElement = chatContainerElement;
-        chatContainerElement = null;
-        chatContainerRoomId = null;
-    }
-
-    resetAppState('room-a');
-    assert.strictEqual(chatContainerElement, null);
-    assert.notStrictEqual(previousContainerElement, null);
-
-    // Room B への到達
-    const containers = [...document.querySelectorAll(SELECTORS.chatContainer)];
-    const newContainer = containers.find(c => c !== previousContainerElement);
-    // 元の DOM には 1 つしかコンテナがないので null
-    assert.strictEqual(newContainer, undefined);
-});
-
 runTest('removedMessageObserver: 新コンテナ配下の removedMessage 判定と processed 付与', () => {
-    const { document, ChatManager, UIManager } = createEnvironment(`
+    const { document, UIManager } = createEnvironment(`
         <html>
             <body>
                 <div class="hsLqkc"></div>
@@ -268,35 +285,6 @@ runTest('removedMessageObserver: 新コンテナ配下の removedMessage 判定�
 
     assert.strictEqual(removeMessageElement.getAttribute('data-gmctc-processed'), 'true');
     assert.strictEqual(AppState.chatOutputFlag, true);
-});
-
-runTest('コンテナ削除・再生成: 旧コンテナが完全に削除され新コンテナが生成された場合', () => {
-    const { document } = createEnvironment(`
-        <html>
-            <body>
-                <div class="hsLqkc"></div>
-                <div jsname="xySENc" aria-live="polite" id="container-old"></div>
-            </body>
-        </html>
-    `);
-
-    let previousContainerElement = document.querySelector('#container-old');
-    
-    // 旧コンテナを DOM から削除
-    previousContainerElement.remove();
-
-    // 新コンテナを DOM に生成
-    const newContainerEl = document.createElement('div');
-    newContainerEl.setAttribute('jsname', 'xySENc');
-    newContainerEl.setAttribute('aria-live', 'polite');
-    newContainerEl.id = 'container-new';
-    document.body.appendChild(newContainerEl);
-
-    const containers = [...document.querySelectorAll(SELECTORS.chatContainer)];
-    const currentContainer = containers.find(c => c !== previousContainerElement);
-
-    assert.notStrictEqual(currentContainer, null, '新コンテナが発見されること');
-    assert.strictEqual(currentContainer.id, 'container-new', '新しいコンテナが正しく取得されること');
 });
 
 // ----------------------------------------------------

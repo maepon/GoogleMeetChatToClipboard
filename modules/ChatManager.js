@@ -131,7 +131,11 @@ const ChatManager = {
 
             if (!textEl) return;
 
-            const getTextContent = (el) => el ? (el.textContent || el.innerText || '').trim() : '';
+            const getTextContent = (el) => {
+                if (!el) return '';
+                const value = typeof el.innerText === 'string' ? el.innerText : el.textContent;
+                return (value || '').trim();
+            };
 
             // 発信者表示がない場合は自分発言とし、selfName が無ければ名前表示を行わない
             const sender = senderEl ? getTextContent(senderEl) : (appState ? (appState.selfName || '') : '');
