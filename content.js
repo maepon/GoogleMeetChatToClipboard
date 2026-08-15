@@ -44,12 +44,51 @@ const IDS = {
     chatLogTextArea: 'GMCTC-onRemoveChatLogTextArea'
 };
 
+function getRoomId() {
+    const match = location.pathname.match(/^\/([a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{3})\/?$/i);
+    return match ? match[1] : null;
+}
+
 // 状態管理オブジェクト
 const AppState = {
     tmpChatLogText: '',
     chatOutputFlag: false,
-    selfName: ''
+    selfName: '',
+    currentRoomId: getRoomId(),
+    chatContainerElement: null,
+    chatContainerRoomId: null
 };
+
+function disableOldRemovedMessageElements(previousRoomId) {
+    if (
+        AppState.chatContainerElement &&
+        AppState.chatContainerRoomId === previousRoomId
+    ) {
+        AppState.chatContainerElement.querySelectorAll(SELECTORS.removedMessage).forEach(el => {
+            el.setAttribute('data-gmctc-processed', 'true');
+        });
+    }
+}
+
+function resetAppState(previousRoomId) {
+    disableOldRemovedMessageElements(previousRoomId);
+    AppState.chatContainerElement = null;
+    AppState.chatContainerRoomId = null;
+    AppState.tmpChatLogText = '';
+    AppState.chatOutputFlag = false;
+    AppState.selfName = '';
+}
+
+function checkRoomChangeAndReset() {
+    const newRoomId = getRoomId();
+    if (AppState.currentRoomId !== newRoomId) {
+        const previousRoomId = AppState.currentRoomId;
+        AppState.currentRoomId = newRoomId;
+        if (previousRoomId !== null) {
+            resetAppState(previousRoomId);
+        }
+    }
+}
 
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Enter' && event.isComposing) {
@@ -62,6 +101,9 @@ document.addEventListener('keydown', function(event) {
 
 // チャット要素を探してクリップボードに保存
 function saveChat() {
+    if (!ChatManager.isSaveTarget(document, SELECTORS)) {
+        return;
+    }
     ChatManager.saveChat(AppState, SELECTORS, document);
 }
 
@@ -73,7 +115,11 @@ function saveChatLog() {
 function saveChatFromPinP() {
     // PinPウィンドウが存在するかチェック
     if (window.documentPictureInPicture && window.documentPictureInPicture.window) {
-        ChatManager.saveChatFromPinP(AppState, SELECTORS, window.documentPictureInPicture.window.document);
+        const pinpDoc = window.documentPictureInPicture.window.document;
+        if (!ChatManager.isSaveTarget(pinpDoc, SELECTORS)) {
+            return;
+        }
+        ChatManager.saveChatFromPinP(AppState, SELECTORS, pinpDoc);
     } else {
         saveChat();
     }
@@ -83,38 +129,52 @@ function saveChatFromPinP() {
 function saveChatFromPinPCopy() {
     // PinPウィンドウが存在するかチェック
     if (window.documentPictureInPicture && window.documentPictureInPicture.window) {
-        ChatManager.saveChatFromPinPCopy(AppState, SELECTORS, window.documentPictureInPicture.window.document);
+        const pinpDoc = window.documentPictureInPicture.window.document;
+        if (!ChatManager.isSaveTarget(pinpDoc, SELECTORS)) {
+            return;
+        }
+        ChatManager.saveChatFromPinPCopy(AppState, SELECTORS, pinpDoc);
     } else {
         saveChat();
     }
 }
 
-
-
 function getChatMemberName() {
     ChatManager.getChatMemberName(AppState, SELECTORS);
 }
-
 
 DOMUtils.observeAndAttachEvent(SELECTORS.exitButton, 'click', saveChat, true);
 DOMUtils.observeAndAttachEvent(`#${IDS.copyButton}`, 'click', saveChat, true);
 
 // 退出済みメッセージを監視するためのObserver
 const removedMessageObserver = ObserverManager.observeForElement(
-    SELECTORS.removedMessage,
-    (removeMessageElement, observer) => {
+    SELECTORS.unprocessedRemovedMessage,
+    (removeMessageElement) => {
+        if (!ChatManager.isSaveTarget(document, SELECTORS)) {
+            return;
+        }
+
+        const activeContainer = document.querySelector(SELECTORS.chatContainer);
+        if (!activeContainer || !activeContainer.contains(removeMessageElement)) {
+            return;
+        }
+
         if (AppState.chatOutputFlag === false) {
             const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.tmpChatLogText, saveChatLog, document);
             if (exitedUI) {
                 removeMessageElement.after(exitedUI);
+                removeMessageElement.setAttribute('data-gmctc-processed', 'true');
                 AppState.chatOutputFlag = true;
             }
         }
     },
-    true // disconnect after finding element
+    false // 切断せず常駐
 );
 
 window.addEventListener('beforeunload', (e) => {
+    if (!ChatManager.isSaveTarget(document, SELECTORS)) {
+        return;
+    }
     const chatText = ChatManager.getChatText(AppState, SELECTORS, document);
     if (chatText !== '') {
         AppState.tmpChatLogText = chatText;
@@ -122,15 +182,19 @@ window.addEventListener('beforeunload', (e) => {
     }
 });
 
-
-
-
-
-
 UIManager.initializeCopyButtonObserver(CONFIG, SELECTORS, IDS, document);
-setInterval(getChatMemberName, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
 
+setInterval(() => {
+    checkRoomChangeAndReset();
+    getChatMemberName();
 
+    const activeRoomId = getRoomId();
+    const currentContainer = document.querySelector(SELECTORS.chatContainer);
+    if (currentContainer && activeRoomId) {
+        AppState.chatContainerElement = currentContainer;
+        AppState.chatContainerRoomId = activeRoomId;
+    }
+}, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
 
 // PinPからのメッセージを受信するリスナー
 window.addEventListener('message', (event) => {
@@ -153,7 +217,7 @@ window.addEventListener('message', (event) => {
 });
 
 // ピクチャーインピクチャーのオープンを監視
-window.documentPictureInPicture.addEventListener('enter',event => {
+window.documentPictureInPicture.addEventListener('enter', event => {
     console.log('PinP enter イベント発生', event);
     const pinpWindow = event.target.window;
     
@@ -168,7 +232,6 @@ window.documentPictureInPicture.addEventListener('enter',event => {
     // PinP初期化処理関数
     const initializePinP = () => {
         console.log('PinP初期化処理開始');
-        // PinPウィンドウ読み込み完了時の処理
         
         // PinP内でのUIManager初期化（コピーボタンの作成）
         const pinpUIManager = {
@@ -189,6 +252,9 @@ window.documentPictureInPicture.addEventListener('enter',event => {
         
         // PinPウィンドウのbeforeunloadイベント対応
         pinpWindow.addEventListener('beforeunload', (e) => {
+            if (!ChatManager.isSaveTarget(pinpWindow.document, SELECTORS)) {
+                return;
+            }
             const chatText = ChatManager.getChatText(AppState, SELECTORS, pinpWindow.document);
             if (chatText !== '') {
                 AppState.tmpChatLogText = chatText;
@@ -205,5 +271,4 @@ window.documentPictureInPicture.addEventListener('enter',event => {
             initializePinP();
         });
     }
-})
-
+});
