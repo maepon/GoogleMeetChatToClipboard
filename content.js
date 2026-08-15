@@ -56,7 +56,8 @@ const AppState = {
     selfName: '',
     currentRoomId: getRoomId(),
     chatContainerElement: null,
-    chatContainerRoomId: null
+    chatContainerRoomId: null,
+    previousContainerElement: null
 };
 
 function disableOldRemovedMessageElements(previousRoomId) {
@@ -72,6 +73,7 @@ function disableOldRemovedMessageElements(previousRoomId) {
 
 function resetAppState(previousRoomId) {
     disableOldRemovedMessageElements(previousRoomId);
+    AppState.previousContainerElement = AppState.chatContainerElement;
     AppState.chatContainerElement = null;
     AppState.chatContainerRoomId = null;
     AppState.tmpChatLogText = '';
@@ -192,10 +194,12 @@ setInterval(() => {
     getChatMemberName();
 
     const activeRoomId = getRoomId();
-    const currentContainer = document.querySelector(SELECTORS.chatContainer);
-    if (currentContainer && activeRoomId) {
-        AppState.chatContainerElement = currentContainer;
-        AppState.chatContainerRoomId = activeRoomId;
+    if (activeRoomId) {
+        const currentContainer = document.querySelector(SELECTORS.chatContainer);
+        if (currentContainer && currentContainer !== AppState.previousContainerElement) {
+            AppState.chatContainerElement = currentContainer;
+            AppState.chatContainerRoomId = activeRoomId;
+        }
     }
 }, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
 
