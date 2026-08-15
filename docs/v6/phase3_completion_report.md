@@ -1,29 +1,44 @@
-# Phase 3 実装完了報告書
+# Phase 3 実装完了報告書 (Rev 2: レビュー対応・契約統一完了版)
 
-`docs/v6/v6_migration_plan.md` に基づき、**Phase 3: チャット解析処理の刷新 (`modules/ChatManager.js`)** の実装を完了いたしました。
+`docs/v6/v6_migration_plan.md` に基づき、**Phase 3: チャット解析処理の刷新 (`modules/ChatManager.js`)** の実装およびレビューご指摘への対応を完了いたしました。
 
 ---
 
 ## 1. 実施概要
 
-- **対象ファイル**: `modules/ChatManager.js`
-- **目的**: 旧一括CSSセレクター指定から「メッセージブロック単位での個別要素抽出・解析」への移行、および言語依存なしでの自分発言判別ロジックの刷新。
+- **対象ファイル**:
+  - `content.js`
+  - `modules/ChatManager.js`
+- **目的**: 旧一括CSSセレクター指定から「メッセージブロック単位での個別要素抽出・解析」への移行、言語依存なしでの自分発言判別ロジックの刷新、および `targetDoc` 伝播・AppState 整理。
 
 ---
 
 ## 2. 変更内容詳細
 
-### `ChatManager.getChatText` の刷新
+### ① `ChatManager.getChatText` / `saveChat` の刷新と `targetDoc` 伝播強化
 
-`modules/ChatManager.js` の `getChatText` メソッドを以下のロジックに刷新しました。
+`modules/ChatManager.js` の `getChatText` および `saveChat` を以下の通り修正しました。
 
 ```javascript
+// チャット要素を探してクリップボードに保存
+saveChat(appState, selectors, targetDoc) {
+    const doc = targetDoc || this.getTargetDocument();
+    const chatMessage = this.getChatText(appState, selectors, doc);
+    appState.chatOutputFlag = true;
+    if (chatMessage === '') {
+        return;
+    }
+    navigator.clipboard.writeText(chatMessage).catch(err => {
+        console.error(chrome.i18n.getMessage('clipboardWriteError'), err);
+    });
+},
+
 // チャットテキストを取得（メッセージブロック単位での解析）
-getChatText(appState, selectors, targetDoc = null) {
+getChatText(appState, selectors, targetDoc) {
     const doc = targetDoc || this.getTargetDocument();
     
-    // 保存対象外のミーティングであれば空文字を返す
-    if (!this.isSaveTarget(doc, selectors)) {
+    // 保存対象外ミーティングまたは doc 不在の場合は空文字を返す
+    if (!doc || !this.isSaveTarget(doc, selectors)) {
         return '';
     }
 
@@ -59,7 +74,16 @@ getChatText(appState, selectors, targetDoc = null) {
 }
 ```
 
-### 主な特徴と仕様
+- `saveChat` 内でも `document` を受け取り `getChatText` へ正しく渡す契約を統一。
+
+### ② `content.js` の整理
+- `AppState.selfNameLabel` の残存定義を完全削除。
+- `saveChat()` 内で `ChatManager.saveChat(AppState, SELECTORS, document)` を明示呼び出し。
+
+---
+
+## 3. 主な機能と特徴
+
 1. **保存対象判定の先行組み込み**: メソッド冒頭で `isSaveTarget(doc, selectors)` を実行し、対象外ミーティングでは処理を行わず空文字を返します。
 2. **メッセージブロック単位のループ処理**: `chatContainer` (`div[jsname="xySENc"][aria-live="polite"]`) 配下の `chatMessage` (`div.Ss4fHf[jsname="Ypafjf"]`) 要素のみを抽出・ループ解析します。
 3. **自分発言の直感判別**: メッセージブロック内で `messageSender` (`.poVWob`) が存在しない場合を「自分発言」として判別。旧 DOM の「あなた」ラベル等への依存を完全に廃止しました。
@@ -67,13 +91,13 @@ getChatText(appState, selectors, targetDoc = null) {
 
 ---
 
-## 3. 検証結果
+## 4. 検証結果
 
-- **構文チェック**: `node --check modules/ChatManager.js content.js` を実行し、構文エラーなし（Clean）を確認済み。
+- **構文チェック**: `node --check modules/ChatManager.js content.js` を実行し Clean であることを確認済み。
 
 ---
 
-## 4. 次のステップ (Phase 4 へ)
+## 5. 次のステップ (Phase 4 へ)
 
 - **Phase 4: UIManager の `targetDoc` 完全対応とコピーボタン注入判定の変更**
   - `checkAndCreateCopyButton` および `createCopyButton` 等で `targetDoc` を必須化し、暗黙の `|| document` フォールバックを全廃

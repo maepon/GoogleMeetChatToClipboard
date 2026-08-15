@@ -24,8 +24,9 @@ const ChatManager = {
     },
 
     // チャット要素を探してクリップボードに保存
-    saveChat(appState, selectors) {
-        const chatMessage = this.getChatText(appState, selectors);
+    saveChat(appState, selectors, targetDoc) {
+        const doc = targetDoc || this.getTargetDocument();
+        const chatMessage = this.getChatText(appState, selectors, doc);
         appState.chatOutputFlag = true;
         if (chatMessage === '') {
             return;
@@ -110,10 +111,10 @@ const ChatManager = {
     },
 
     // チャットテキストを取得（メッセージブロック単位での解析）
-    getChatText(appState, selectors, targetDoc = null) {
+    getChatText(appState, selectors, targetDoc) {
         const doc = targetDoc || this.getTargetDocument();
         
-        if (!this.isSaveTarget(doc, selectors)) {
+        if (!doc || !this.isSaveTarget(doc, selectors)) {
             return '';
         }
 

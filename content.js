@@ -48,8 +48,7 @@ const IDS = {
 const AppState = {
     tmpChatLogText: '',
     chatOutputFlag: false,
-    selfName: '',
-    selfNameLabel: ''
+    selfName: ''
 };
 
 document.addEventListener('keydown', function(event) {
@@ -63,7 +62,7 @@ document.addEventListener('keydown', function(event) {
 
 // チャット要素を探してクリップボードに保存
 function saveChat() {
-    ChatManager.saveChat(AppState, SELECTORS);
+    ChatManager.saveChat(AppState, SELECTORS, document);
 }
 
 function saveChatLog() {
