@@ -15,6 +15,14 @@ const ChatManager = {
         return document;
     },
 
+    // 保存対象のミーティングか判定（div.hsLqkc の存在確認）
+    isSaveTarget(targetDoc, selectors) {
+        if (!targetDoc || !selectors || !selectors.nonSaveTargetIndicator) {
+            return false;
+        }
+        return targetDoc.querySelector(selectors.nonSaveTargetIndicator) !== null;
+    },
+
     // チャット要素を探してクリップボードに保存
     saveChat(appState, selectors) {
         const chatMessage = this.getChatText(appState, selectors);
