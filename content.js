@@ -104,9 +104,11 @@ const removedMessageObserver = ObserverManager.observeForElement(
     SELECTORS.removedMessage,
     (removeMessageElement, observer) => {
         if (AppState.chatOutputFlag === false) {
-            const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.tmpChatLogText, saveChatLog);
-            removeMessageElement.after(exitedUI);
-            AppState.chatOutputFlag = true;
+            const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.tmpChatLogText, saveChatLog, document);
+            if (exitedUI) {
+                removeMessageElement.after(exitedUI);
+                AppState.chatOutputFlag = true;
+            }
         }
     },
     true // disconnect after finding element
@@ -125,7 +127,7 @@ window.addEventListener('beforeunload', (e) => {
 
 
 
-UIManager.initializeCopyButtonObserver(CONFIG, SELECTORS, IDS);
+UIManager.initializeCopyButtonObserver(CONFIG, SELECTORS, IDS, document);
 setInterval(getChatMemberName, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
 
 

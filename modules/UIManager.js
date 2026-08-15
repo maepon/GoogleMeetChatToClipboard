@@ -2,7 +2,8 @@
 
 const UIManager = {
     // チャットの見出しの存在判定を行い、コピーボタンを作成する
-    initializeCopyButtonObserver(config, selectors, ids, targetDoc = document) {
+    initializeCopyButtonObserver(config, selectors, ids, targetDoc) {
+        if (!targetDoc) return null;
         // 初回チェック
         this.checkAndCreateCopyButton(config, selectors, ids, targetDoc);
         
