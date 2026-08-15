@@ -1,13 +1,13 @@
-# Phase 5 実装完了報告書
+# Phase 5 実装完了報告書 (Rev 2: 一貫性強化・修正完了版)
 
-`docs/v6/v6_migration_plan.md` に基づき、**Phase 5: 退出 Observer ガード・`beforeunload` ガード・SPA 遷移状態リセット** の実装を完了いたしました。
+`docs/v6/v6_migration_plan.md` に基づき、**Phase 5: 退出 Observer ガード・`beforeunload` ガード・SPA 遷移状態リセット** の実装およびレビューご指摘への対応を完了いたしました。
 
 ---
 
 ## 1. 実施概要
 
 - **対象ファイル**: `content.js`
-- **目的**: 退出時の `removedMessageObserver` および `beforeunload` に対する `isSaveTarget` ガード条件の追加、SPA での Room 遷移検知 (`getRoomId()`) と状態初期化 (`resetAppState`)、および旧コンテナ要素の限定無効化。
+- **目的**: 退出時の `removedMessageObserver` および `beforeunload` に対する `isSaveTarget` ガード条件の追加、SPA での Room 遷移検知 (`getRoomId()`) と状態初期化 (`resetAppState`)、および `AppState.chatContainerRoomId` と連携したコンテナ範囲限定無効化。
 
 ---
 
@@ -59,10 +59,10 @@ function checkRoomChangeAndReset() {
 }
 ```
 
-### ③ `removedMessageObserver` へのマルチガードと常駐化
+### ③ `removedMessageObserver` へのマルチガードとアクティブコンテナ参照
 - セレクター自体を `unprocessedRemovedMessage` (`:not([data-gmctc-processed])`) に限定し `querySelector` の先頭固着を防止。
 - `isSaveTarget(document, SELECTORS)` ガードの追加。
-- `activeContainer.contains(removeMessageElement)` により、現在画面上に存在するアクティブな `chatContainer` の子孫要素であるかを検証。
+- `AppState.chatContainerRoomId === AppState.currentRoomId` と一致する `chatContainerElement` を優先参照し、現在表示中のアクティブな `chatContainer` の子孫要素であるかを検証。
 - `disconnect = false`（常駐）で監視を維持。
 
 ```javascript
@@ -73,7 +73,10 @@ const removedMessageObserver = ObserverManager.observeForElement(
             return;
         }
 
-        const activeContainer = document.querySelector(SELECTORS.chatContainer);
+        const activeContainer = (AppState.chatContainerRoomId === AppState.currentRoomId && AppState.chatContainerElement)
+            ? AppState.chatContainerElement
+            : document.querySelector(SELECTORS.chatContainer);
+
         if (!activeContainer || !activeContainer.contains(removeMessageElement)) {
             return;
         }
