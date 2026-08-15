@@ -195,8 +195,9 @@ setInterval(() => {
 
     const activeRoomId = getRoomId();
     if (activeRoomId) {
-        const currentContainer = document.querySelector(SELECTORS.chatContainer);
-        if (currentContainer && currentContainer !== AppState.previousContainerElement) {
+        const containers = [...document.querySelectorAll(SELECTORS.chatContainer)];
+        const currentContainer = containers.find(container => container !== AppState.previousContainerElement);
+        if (currentContainer) {
             AppState.chatContainerElement = currentContainer;
             AppState.chatContainerRoomId = activeRoomId;
         }

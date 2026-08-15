@@ -1,13 +1,13 @@
-# Phase 5 実装完了報告書 (Rev 4: 旧コンテナ誤紐付け防止・完全版)
+# Phase 5 実装完了報告書 (Rev 5: querySelectorAll による新コンテナ特定完了版)
 
-`docs/v6/v6_migration_plan.md` に基づき、**Phase 5: 退出 Observer ガード・`beforeunload` ガード・SPA 遷移状態リセット** の実装およびレビューご指摘への対応を完了いたしました。
+`docs/v6/v6_migration_plan.md` に基づき、**Phase 5: 退出 Observer ガード・`beforeunload` ガード・SPA 遷移状態リセット** の実装およびレビューご指摘への対応をすべて完了いたしました。
 
 ---
 
 ## 1. 実施概要
 
 - **対象ファイル**: `content.js`
-- **目的**: 退出時の `removedMessageObserver` および `beforeunload` に対する `isSaveTarget` ガード条件の追加、SPA での Room 遷移検知 (`getRoomId()`) と状態初期化 (`resetAppState`)、および `AppState.previousContainerElement` による旧コンテナ要素の誤登録防止。
+- **目的**: 退出時の `removedMessageObserver` および `beforeunload` に対する `isSaveTarget` ガード条件の追加、SPA での Room 遷移検知 (`getRoomId()`) と状態初期化 (`resetAppState`)、および `querySelectorAll` を用いた旧コンテナ以外の新コンテナ特定。
 
 ---
 
@@ -70,8 +70,8 @@ function checkRoomChangeAndReset() {
 }
 ```
 
-### ③ 旧コンテナ要素の誤登録を排除した定期監視 (`setInterval`)
-定期監視において、`document.querySelector(SELECTORS.chatContainer)` で取得したコンテナが直前の Room の旧コンテナ要素 (`previousContainerElement`) と一致する場合は登録をスキップし、Meet が新 Room 用のコンテナ DOM を生成して初めて新 Room ID とペア付けする堅牢な登録ロジックを実装しました。
+### ③ `querySelectorAll` による新コンテナ特定の定期監視 (`setInterval`)
+旧コンテナが DOM の先頭に残ったまま新コンテナが追加された場合でも、`querySelectorAll` ですべてのコンテナ候補を取得し、旧コンテナ (`previousContainerElement`) 以外の新コンテナ要素を確実に抽出・登録するロジックを実装しました。
 
 ```javascript
 setInterval(() => {
@@ -80,8 +80,9 @@ setInterval(() => {
 
     const activeRoomId = getRoomId();
     if (activeRoomId) {
-        const currentContainer = document.querySelector(SELECTORS.chatContainer);
-        if (currentContainer && currentContainer !== AppState.previousContainerElement) {
+        const containers = [...document.querySelectorAll(SELECTORS.chatContainer)];
+        const currentContainer = containers.find(container => container !== AppState.previousContainerElement);
+        if (currentContainer) {
             AppState.chatContainerElement = currentContainer;
             AppState.chatContainerRoomId = activeRoomId;
         }
