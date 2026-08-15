@@ -16,8 +16,8 @@ const ChatManager = {
     },
 
     // チャット要素を探してクリップボードに保存
-    saveChat(appState, selectors, chatMemberNameElementClassName) {
-        const chatMessage = this.getChatText(appState, selectors, chatMemberNameElementClassName);
+    saveChat(appState, selectors) {
+        const chatMessage = this.getChatText(appState, selectors);
         appState.chatOutputFlag = true;
         if (chatMessage === '') {
             return;
@@ -59,8 +59,8 @@ const ChatManager = {
     },
 
     // PinP環境専用のsaveChat（明示的にPinPウィンドウのdocumentを使用）
-    saveChatFromPinP(appState, selectors, chatMemberNameElementClassName, pinpDocument) {
-        const chatMessage = this.getChatTextFromPinP(appState, selectors, chatMemberNameElementClassName, pinpDocument);
+    saveChatFromPinP(appState, selectors, pinpDocument) {
+        const chatMessage = this.getChatTextFromPinP(appState, selectors, pinpDocument);
         appState.chatOutputFlag = true;
         if (chatMessage === '') {
             return;
@@ -84,8 +84,8 @@ const ChatManager = {
     },
 
     // PinP環境でのコピーボタン専用（フォーカス移動なし）
-    saveChatFromPinPCopy(appState, selectors, chatMemberNameElementClassName, pinpDocument) {
-        const chatMessage = this.getChatTextFromPinP(appState, selectors, chatMemberNameElementClassName, pinpDocument);
+    saveChatFromPinPCopy(appState, selectors, pinpDocument) {
+        const chatMessage = this.getChatTextFromPinP(appState, selectors, pinpDocument);
         appState.chatOutputFlag = true;
         if (chatMessage === '') {
             return;
@@ -102,57 +102,22 @@ const ChatManager = {
     },
 
     // チャットテキストを取得
-    getChatText(appState, selectors, chatMemberNameElementClassName) {
+    getChatText(appState, selectors, targetDoc = null) {
         // 適切なdocumentを取得
-        const targetDoc = this.getTargetDocument();
+        const doc = targetDoc || this.getTargetDocument();
         
         // 全体のセレクター
-        this.getSelfLabel(appState, selectors, targetDoc);
-        const allElements = targetDoc.querySelectorAll(selectors.chatMessage);
+        const allElements = doc.querySelectorAll(selectors.chatMessage);
         
         const chatMessages = [...allElements].map(el => {
-            if (this.isSelfNameAndLabelReady(appState) && 
-                el.classList.contains(chatMemberNameElementClassName) && 
-                el.innerText.toString() === appState.selfNameLabel) {
-                return appState.selfName;
-            }
             return el.innerText;
         });
         return chatMessages.length ? chatMessages.join('\n') : '';
     },
 
     // PinP環境専用のgetChatText（明示的にPinPウィンドウのdocumentを使用）
-    getChatTextFromPinP(appState, selectors, chatMemberNameElementClassName, pinpDocument) {
-        // 全体のセレクター
-        this.getSelfLabelFromPinP(appState, selectors, pinpDocument);
-        const allElements = pinpDocument.querySelectorAll(selectors.chatMessage);
-        
-        const chatMessages = [...allElements].map(el => {
-            if (this.isSelfNameAndLabelReady(appState) && 
-                el.classList.contains(chatMemberNameElementClassName) && 
-                el.innerText.toString() === appState.selfNameLabel) {
-                return appState.selfName;
-            }
-            return el.innerText;
-        });
-        return chatMessages.length ? chatMessages.join('\n') : '';
-    },
-
-    // 自分の名前と自分の名前として表示されるラベルを取得する
-    getSelfLabel(appState, selectors, targetDoc = null) {
-        const doc = targetDoc || this.getTargetDocument();
-        const selfNameElement = doc.querySelector(selectors.selfNameElement);
-        if (selfNameElement) {
-            appState.selfNameLabel = selfNameElement.textContent;
-        }
-    },
-
-    // PinP環境専用のgetSelfLabel
-    getSelfLabelFromPinP(appState, selectors, pinpDocument) {
-        const selfNameElement = pinpDocument.querySelector(selectors.selfNameElement);
-        if (selfNameElement) {
-            appState.selfNameLabel = selfNameElement.textContent;
-        }
+    getChatTextFromPinP(appState, selectors, pinpDocument) {
+        return this.getChatText(appState, selectors, pinpDocument);
     },
 
     // チャットメンバー名を取得
@@ -162,11 +127,6 @@ const ChatManager = {
         if (chatMemberNameElement && chatMemberNameElement.getAttribute('title')) {
             appState.selfName = chatMemberNameElement.getAttribute('title');
         }
-    },
-
-    // 自分の名前とラベルが保存されているかを確認する
-    isSelfNameAndLabelReady(appState) {
-        return appState.selfName !== '' && appState.selfNameLabel !== '';
     }
 };
 

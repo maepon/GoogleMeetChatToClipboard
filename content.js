@@ -25,18 +25,18 @@ const CONFIG = {
     }
 };
 
-const CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME = 'poVWob';
-
 const SELECTORS = {
-    exitButton: '[jsname="CQylAd"]',
-    //[チャット本文,時刻表記,発信者]の順でセレクタを記載
-    chatMessage: '[jsname="dTKtvb"] , [jsname="Ypafjf"]  [jsname="biJjHb"] , .poVWob',
+    exitButton: 'button[jsname="CQylAd"]',
+    chatContainer: 'div[jsname="xySENc"][aria-live="polite"]',
+    chatMessage: 'div.Ss4fHf[jsname="Ypafjf"]',
+    messageText: 'div[jsname="dTKtvb"]',
+    messageTime: 'div[jsname="biJjHb"]',
+    messageSender: '.poVWob',
+    chatTitle: 'div[jsname="uPuGNe"] [role="heading"]',
+    chatMemberName: '.ASy21[title]',
+    nonSaveTargetIndicator: 'div.hsLqkc',
     removedMessage: '.lAqQo .roSPhc[jsname="r4nke"]',
-    chatTitle: '[jsname="uPuGNe"][role="heading"]',
-    chatMemberName: `.ASy21[title]`,
-    selfNameElement: '.Ss4fHf:has(.ym5LMd) .poVWob',
-    selfNameTextElement: '[role="tooltip"]',
-    keepButton: '.ym5LMd'
+    unprocessedRemovedMessage: '.lAqQo .roSPhc[jsname="r4nke"]:not([data-gmctc-processed])'
 };
 
 const IDS = {
@@ -63,7 +63,7 @@ document.addEventListener('keydown', function(event) {
 
 // チャット要素を探してクリップボードに保存
 function saveChat() {
-    ChatManager.saveChat(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME);
+    ChatManager.saveChat(AppState, SELECTORS);
 }
 
 function saveChatLog() {
@@ -74,7 +74,7 @@ function saveChatLog() {
 function saveChatFromPinP() {
     // PinPウィンドウが存在するかチェック
     if (window.documentPictureInPicture && window.documentPictureInPicture.window) {
-        ChatManager.saveChatFromPinP(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME, window.documentPictureInPicture.window.document);
+        ChatManager.saveChatFromPinP(AppState, SELECTORS, window.documentPictureInPicture.window.document);
     } else {
         saveChat();
     }
@@ -84,7 +84,7 @@ function saveChatFromPinP() {
 function saveChatFromPinPCopy() {
     // PinPウィンドウが存在するかチェック
     if (window.documentPictureInPicture && window.documentPictureInPicture.window) {
-        ChatManager.saveChatFromPinPCopy(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME, window.documentPictureInPicture.window.document);
+        ChatManager.saveChatFromPinPCopy(AppState, SELECTORS, window.documentPictureInPicture.window.document);
     } else {
         saveChat();
     }
@@ -114,7 +114,7 @@ const removedMessageObserver = ObserverManager.observeForElement(
 );
 
 window.addEventListener('beforeunload', (e) => {
-    const chatText = ChatManager.getChatText(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME);
+    const chatText = ChatManager.getChatText(AppState, SELECTORS, document);
     if (chatText !== '') {
         AppState.tmpChatLogText = chatText;
         e.returnValue = 'Remove?';
@@ -202,7 +202,7 @@ window.documentPictureInPicture.addEventListener('enter',event => {
         
         // PinPウィンドウのbeforeunloadイベント対応
         pinpWindow.addEventListener('beforeunload', (e) => {
-            const chatText = ChatManager.getChatText(AppState, SELECTORS, CHAT_MEMBER_NAME_ELEMENT_CLASS_NAME);
+            const chatText = ChatManager.getChatText(AppState, SELECTORS, pinpWindow.document);
             if (chatText !== '') {
                 AppState.tmpChatLogText = chatText;
                 e.returnValue = 'Remove?';
