@@ -9,7 +9,7 @@
 - **対象ファイル**:
   - `content.js`
   - `modules/ChatManager.js`
-- **目的**: 旧一括CSSセレクター指定から「メッセージブロック単位での個別要素抽出・解析」への移行、言語依存なしでの自分発言判別ロジックの刷新、および `targetDoc` 伝播・AppState 整理。
+- **目的**: 旧一括CSSセレクター指定から「メッセージブロック単位での個別要素抽出・解析」への移行、言語依存なしでの自分発言判別ロジックの刷新、および明示 `targetDoc` を受け取れる構造への対応（未指定時は従来どおり `getTargetDocument()` を利用）。
 
 ---
 
@@ -74,7 +74,7 @@ getChatText(appState, selectors, targetDoc) {
 }
 ```
 
-- `saveChat` 内でも `document` を受け取り `getChatText` へ正しく渡す契約を統一。
+- `saveChat` 内でも `document` を受け取り `getChatText` へ正しく渡す構成とし、未指定時は `getTargetDocument()` にフォールバックする安全設計としています。
 
 ### ② `content.js` の整理
 - `AppState.selfNameLabel` の残存定義を完全削除。

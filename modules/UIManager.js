@@ -2,45 +2,55 @@
 
 const UIManager = {
     // チャットの見出しの存在判定を行い、コピーボタンを作成する
-    initializeCopyButtonObserver(config, selectors, ids) {
+    initializeCopyButtonObserver(config, selectors, ids, targetDoc = document) {
         // 初回チェック
-        this.checkAndCreateCopyButton(config, selectors, ids);
+        this.checkAndCreateCopyButton(config, selectors, ids, targetDoc);
         
         // Observerでチャットタイトル要素の監視を開始
         return ObserverManager.observeForUIChanges(
             selectors.chatTitle,
             (chatHeadingElement, observer) => {
-                this.checkAndCreateCopyButton(config, selectors, ids);
-            }
+                this.checkAndCreateCopyButton(config, selectors, ids, targetDoc);
+            },
+            targetDoc
         );
     },
 
     // チャットの見出しの存在判定を行い、コピーボタンを作成する（内部処理）
-    checkAndCreateCopyButton(config, selectors, ids) {
-        const chatHeadingElement = document.querySelector(selectors.chatTitle);
-        if (chatHeadingElement !== null) {
-            if (document.querySelector(`#${ids.copyButton}`) === null) {
-                chatHeadingElement.after(this.createCopyButton(config, ids));
+    checkAndCreateCopyButton(config, selectors, ids, targetDoc) {
+        if (!targetDoc || !ChatManager.isSaveTarget(targetDoc, selectors)) {
+            return;
+        }
+        const chatHeadingElement = targetDoc.querySelector(selectors.chatTitle);
+        if (chatHeadingElement !== null && targetDoc.querySelector(`#${ids.copyButton}`) === null) {
+            const copyButton = this.createCopyButton(config, ids, targetDoc);
+            if (copyButton) {
+                chatHeadingElement.after(copyButton);
             }
         }
     },
 
     // コピーボタンのDOMを作成する
-    createCopyButton(config, ids) {
-        const copyIconSpan = this.createCopyIconSpan(config);
-        const copyButton = this.createButtonWithIcon(copyIconSpan, config, ids);
+    createCopyButton(config, ids, targetDoc) {
+        if (!targetDoc) return null;
+        const copyIconSpan = this.createCopyIconSpan(config, targetDoc);
+        const copyButton = this.createButtonWithIcon(copyIconSpan, config, ids, targetDoc);
+        if (!copyButton) return null;
+
         copyButton.addEventListener('mouseenter', (e) => this.handleCopyButtonColorChange(e, config.STYLES.COPY_BUTTON_HOVER));
         copyButton.addEventListener('mouseleave', (e) => this.handleCopyButtonColorChange(e, config.STYLES.COPY_BUTTON_NORMAL));
         copyButton.addEventListener('mousedown', (e) => this.handleCopyButtonColorChange(e, config.STYLES.COPY_BUTTON_NORMAL));
         copyButton.addEventListener('mouseup', (e) => this.handleCopyButtonColorChange(e, config.STYLES.COPY_BUTTON_HOVER));
-        const wrapDiv = document.createElement('div');
+        
+        const wrapDiv = targetDoc.createElement('div');
         wrapDiv.append(copyButton);
         return wrapDiv;
     },
 
     // アイコンspan要素を作成
-    createCopyIconSpan(config) {
-        const copyIconSpan = document.createElement('span');
+    createCopyIconSpan(config, targetDoc) {
+        if (!targetDoc) return null;
+        const copyIconSpan = targetDoc.createElement('span');
         copyIconSpan.classList.add('google-material-icons');
         copyIconSpan.textContent = 'content_copy';
         copyIconSpan.style.color = config.STYLES.COPY_ICON.color;
@@ -48,15 +58,16 @@ const UIManager = {
     },
 
     // ボタン要素を作成してアイコンを追加
-    createButtonWithIcon(iconElement, config, ids) {
-        const copyButton = document.createElement('button');
+    createButtonWithIcon(iconElement, config, ids, targetDoc) {
+        if (!targetDoc) return null;
+        const copyButton = targetDoc.createElement('button');
         copyButton.type = 'button';
         copyButton.style.backgroundColor = config.STYLES.COPY_BUTTON.backgroundColor;
         copyButton.style.border = config.STYLES.COPY_BUTTON.border;
         copyButton.style.padding = config.STYLES.COPY_BUTTON.padding;
         copyButton.style.cursor = config.STYLES.COPY_BUTTON.cursor;
         copyButton.style.borderRadius = config.STYLES.COPY_BUTTON.borderRadius;
-        copyButton.append(iconElement);
+        if (iconElement) copyButton.append(iconElement);
         copyButton.id = ids.copyButton;
         return copyButton;
     },
@@ -67,22 +78,26 @@ const UIManager = {
     },
 
     // 退出後のUI要素を作成
-    createExitedUI(config, ids, chatLogText, saveChatLogCallback) {
-        const textarea = document.createElement('textarea');
+    createExitedUI(config, ids, chatLogText, saveChatLogCallback, targetDoc) {
+        if (!targetDoc) {
+            console.error('createExitedUI: targetDoc is required');
+            return null;
+        }
+        const textarea = targetDoc.createElement('textarea');
         textarea.id = ids.chatLogTextArea;
         textarea.style.width = config.STYLES.TEXTAREA.width;
         textarea.style.height = config.STYLES.TEXTAREA.height;
         textarea.value = chatLogText;
         
-        const copyButton = document.createElement('button');
+        const copyButton = targetDoc.createElement('button');
         copyButton.textContent = chrome.i18n.getMessage('copyButtonText');
         copyButton.type = 'button';
         copyButton.addEventListener('click', saveChatLogCallback);
         
-        const pElement = document.createElement('p');
+        const pElement = targetDoc.createElement('p');
         pElement.append(copyButton);
         
-        const wrapDiv = document.createElement('div');
+        const wrapDiv = targetDoc.createElement('div');
         wrapDiv.append(textarea, pElement);
         
         return wrapDiv;

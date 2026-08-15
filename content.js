@@ -172,21 +172,7 @@ window.documentPictureInPicture.addEventListener('enter',event => {
         const pinpUIManager = {
             initializeCopyButtonObserverPinP() {
                 console.log('PinP コピーボタンObserver開始');
-                // PinP内のチャットタイトル要素を監視してコピーボタンを作成
-                return ObserverManager.observeForUIChanges(
-                    SELECTORS.chatTitle,
-                    (chatHeadingElement, observer) => {
-                        this.checkAndCreateCopyButtonPinP(chatHeadingElement);
-                    },
-                    pinpWindow.document
-                );
-            },
-            
-            checkAndCreateCopyButtonPinP(chatHeadingElement) {
-                if (chatHeadingElement && !pinpWindow.document.querySelector(`#${IDS.copyButton}`)) {
-                    const copyButton = UIManager.createCopyButton(CONFIG, IDS);
-                    chatHeadingElement.after(copyButton);
-                }
+                return UIManager.initializeCopyButtonObserver(CONFIG, SELECTORS, IDS, pinpWindow.document);
             }
         };
         
