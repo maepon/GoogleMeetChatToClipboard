@@ -109,17 +109,42 @@ const ChatManager = {
         navigator.clipboard.writeText(appState.tmpChatLogText);
     },
 
-    // チャットテキストを取得
+    // チャットテキストを取得（メッセージブロック単位での解析）
     getChatText(appState, selectors, targetDoc = null) {
-        // 適切なdocumentを取得
         const doc = targetDoc || this.getTargetDocument();
         
-        // 全体のセレクター
-        const allElements = doc.querySelectorAll(selectors.chatMessage);
-        
-        const chatMessages = [...allElements].map(el => {
-            return el.innerText;
+        if (!this.isSaveTarget(doc, selectors)) {
+            return '';
+        }
+
+        const container = doc.querySelector(selectors.chatContainer);
+        if (!container) return '';
+
+        const messageBlocks = container.querySelectorAll(selectors.chatMessage);
+        const chatMessages = [];
+
+        messageBlocks.forEach(block => {
+            const textEl = block.querySelector(selectors.messageText);
+            const timeEl = block.querySelector(selectors.messageTime);
+            const senderEl = block.querySelector(selectors.messageSender);
+
+            if (!textEl) return;
+
+            // 発信者表示がない場合は自分発言とし、selfName が無ければ名前表示を行わない
+            const sender = senderEl ? senderEl.innerText.trim() : (appState ? (appState.selfName || '') : '');
+            const time = timeEl ? timeEl.innerText.trim() : '';
+            const text = textEl.innerText.trim();
+
+            const lines = [];
+            if (sender) lines.push(sender);
+            if (time) lines.push(time);
+            if (text) lines.push(text);
+
+            if (lines.length > 0) {
+                chatMessages.push(lines.join('\n'));
+            }
         });
+
         return chatMessages.length ? chatMessages.join('\n') : '';
     },
 
