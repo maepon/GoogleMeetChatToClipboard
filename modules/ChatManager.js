@@ -131,10 +131,12 @@ const ChatManager = {
 
             if (!textEl) return;
 
+            const getTextContent = (el) => el ? (el.textContent || el.innerText || '').trim() : '';
+
             // 発信者表示がない場合は自分発言とし、selfName が無ければ名前表示を行わない
-            const sender = senderEl ? senderEl.innerText.trim() : (appState ? (appState.selfName || '') : '');
-            const time = timeEl ? timeEl.innerText.trim() : '';
-            const text = textEl.innerText.trim();
+            const sender = senderEl ? getTextContent(senderEl) : (appState ? (appState.selfName || '') : '');
+            const time = getTextContent(timeEl);
+            const text = getTextContent(textEl);
 
             const lines = [];
             if (sender) lines.push(sender);
