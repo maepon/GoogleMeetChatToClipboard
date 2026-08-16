@@ -77,7 +77,7 @@ function createEnvironment(htmlContent, url = 'https://meet.google.com/abc-defg-
     window.eval(uiManagerCode);
 
     if (loadContentJs) {
-        window.eval(contentJsCode + '; window.AppState = AppState; window.saveChat = saveChat; window.getRoomId = getRoomId; window.resetAppState = resetAppState;');
+        window.eval(contentJsCode + '; window.AppState = AppState; window.saveChat = saveChat; window.getRoomId = getRoomId; window.resetAppState = resetAppState; window.updateLogBackup = updateLogBackup; window.clearExitPendingState = clearExitPendingState; window.checkRoomChangeAndReset = checkRoomChangeAndReset;');
     }
 
     return { 
@@ -372,19 +372,44 @@ runTest('removedMessageObserver: hsLqkc が存在しない退出後 DOM でも w
     assert.notStrictEqual(document.querySelector(`#${IDS.chatLogTextArea}`), null, 'DOM 上にテキストエリアが挿入されていること');
 });
 
-runTest('content.js 実体: 定期バックアップによる pendingExitChatLogText の自動保持検証', () => {
+runTest('content.js 実体: updateLogBackup() と saveChatLog() の pendingExit 相互作用検証', () => {
+    const { window, getWrittenText, ChatManager } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    
+    // updateLogBackup 関数の直接実行
+    window.updateLogBackup();
+    assert.strictEqual(window.AppState.wasSaveTarget, true);
+    assert.ok(window.AppState.pendingExitChatLogText.length > 0, 'updateLogBackup() により pendingExitChatLogText にログが格納されること');
+    assert.strictEqual(window.AppState.pendingExitRoomId, 'abc-defg-hij');
+
+    // /landing 遷移 (resetAppState 呼び出し) で tmpChatLogText は消えるが pendingExitChatLogText は保護されること
+    window.resetAppState('abc-defg-hij');
+    assert.strictEqual(window.AppState.tmpChatLogText, '', 'tmpChatLogText は消去されること');
+    assert.ok(window.AppState.pendingExitChatLogText.length > 0, 'pendingExitChatLogText は保護されて残ること');
+    assert.strictEqual(window.AppState.wasSaveTarget, true, 'wasSaveTarget も保護されて残ること');
+
+    // saveChatLog の呼び出しで pendingExitChatLogText がコピーされること
+    ChatManager.saveChatLog(window.AppState);
+    assert.strictEqual(getWrittenText(), window.AppState.pendingExitChatLogText, 'saveChatLog で pendingExitChatLogText がクリップボードにコピーされること');
+});
+
+runTest('content.js 実体: Room A -> /landing -> Room B 遷移時のログ混入防止検証', () => {
     const { window } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
     
-    // 通話中かつ対象ミーティングであれば remained/pending にログが自動格納されること
-    window.AppState.wasSaveTarget = window.ChatManager.isSaveTarget(window.document, SELECTORS);
-    const currentText = window.ChatManager.getChatText(window.AppState, SELECTORS, window.document);
-    if (currentText !== '') {
-        window.AppState.tmpChatLogText = currentText;
-        window.AppState.pendingExitChatLogText = currentText;
-    }
+    // Room A (abc-defg-hij) でログバックアップ
+    window.updateLogBackup();
+    assert.strictEqual(window.AppState.pendingExitRoomId, 'abc-defg-hij');
+    assert.ok(window.AppState.pendingExitChatLogText.length > 0);
 
-    assert.strictEqual(window.AppState.wasSaveTarget, true);
-    assert.ok(window.AppState.pendingExitChatLogText.length > 0, 'コピー未押下でも pendingExitChatLogText にチャットが自動バックアップされること');
+    // /landing への遷移 (Room ID = null) ➔ 退避ログが残る
+    window.location.href = 'https://meet.google.com/landing';
+    window.checkRoomChangeAndReset();
+    assert.ok(window.AppState.pendingExitChatLogText.length > 0, '/landing 遷移時も Room A の退避ログが残ること');
+
+    // 明示的に退避ログのクリア処理 (clearExitPendingState) を直接実行・検証
+    window.clearExitPendingState();
+    assert.strictEqual(window.AppState.pendingExitChatLogText, '', 'クリア実行時に退避ログが完全消去されること');
+    assert.strictEqual(window.AppState.wasSaveTarget, false);
+    assert.strictEqual(window.AppState.pendingExitRoomId, null);
 });
 
 // ----------------------------------------------------

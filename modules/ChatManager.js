@@ -104,8 +104,12 @@ const ChatManager = {
 
     // 一時保存されたチャットログをクリップボードに保存
     saveChatLog(appState) {
-        if (appState.tmpChatLogText === '') return;
-        navigator.clipboard.writeText(appState.tmpChatLogText);
+        const textToSave = appState.pendingExitChatLogText || appState.tmpChatLogText;
+        if (!textToSave) return;
+        navigator.clipboard.writeText(textToSave).catch(err => {
+            console.error(chrome.i18n.getMessage('clipboardWriteError'), err);
+            this._execCommandClipboard(textToSave, appState);
+        });
     },
 
     // チャットテキストを取得（メッセージブロック単位での解析）

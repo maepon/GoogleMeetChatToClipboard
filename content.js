@@ -53,6 +53,7 @@ function getRoomId() {
 const AppState = {
     tmpChatLogText: '',
     pendingExitChatLogText: '',
+    pendingExitRoomId: null,
     exitedUIInserted: false,
     wasSaveTarget: false,
     selfName: '',
@@ -61,6 +62,13 @@ const AppState = {
     chatContainerRoomId: null,
     previousContainerElement: null
 };
+
+function clearExitPendingState() {
+    AppState.pendingExitChatLogText = '';
+    AppState.pendingExitRoomId = null;
+    AppState.wasSaveTarget = false;
+    AppState.exitedUIInserted = false;
+}
 
 function disableOldRemovedMessageElements(previousRoomId) {
     if (
@@ -79,9 +87,6 @@ function resetAppState(previousRoomId) {
     AppState.chatContainerElement = null;
     AppState.chatContainerRoomId = null;
     AppState.tmpChatLogText = '';
-    AppState.pendingExitChatLogText = '';
-    AppState.exitedUIInserted = false;
-    AppState.wasSaveTarget = false;
     AppState.selfName = '';
 }
 
@@ -90,8 +95,28 @@ function checkRoomChangeAndReset() {
     if (AppState.currentRoomId !== newRoomId) {
         const previousRoomId = AppState.currentRoomId;
         AppState.currentRoomId = newRoomId;
+
         if (previousRoomId !== null) {
             resetAppState(previousRoomId);
+        }
+
+        if (newRoomId !== null && newRoomId !== AppState.pendingExitRoomId) {
+            clearExitPendingState();
+        }
+    }
+}
+
+function updateLogBackup() {
+    if (ChatManager.isSaveTarget(document, SELECTORS)) {
+        AppState.wasSaveTarget = true;
+        const roomId = getRoomId() || AppState.currentRoomId;
+        if (roomId) {
+            AppState.pendingExitRoomId = roomId;
+        }
+        const currentText = ChatManager.getChatText(AppState, SELECTORS, document);
+        if (currentText !== '') {
+            AppState.tmpChatLogText = currentText;
+            AppState.pendingExitChatLogText = currentText;
         }
     }
 }
@@ -107,6 +132,7 @@ document.addEventListener('keydown', function(event) {
 
 // チャット要素を探してクリップボードに保存
 function saveChat() {
+    updateLogBackup();
     if (!ChatManager.isSaveTarget(document, SELECTORS)) {
         return;
     }
@@ -177,7 +203,7 @@ const removedMessageObserver = ObserverManager.observeForElement(
             return;
         }
 
-        if (AppState.pendingExitChatLogText === '') {
+        if (!AppState.pendingExitChatLogText) {
             removeMessageElement.setAttribute('data-gmctc-processed', 'true');
             return;
         }
@@ -193,6 +219,7 @@ const removedMessageObserver = ObserverManager.observeForElement(
 );
 
 window.addEventListener('beforeunload', (e) => {
+    updateLogBackup();
     if (!ChatManager.isSaveTarget(document, SELECTORS)) {
         return;
     }
@@ -207,20 +234,12 @@ window.addEventListener('beforeunload', (e) => {
 UIManager.initializeCopyButtonObserver(CONFIG, SELECTORS, IDS, document);
 
 setInterval(() => {
+    updateLogBackup();
     checkRoomChangeAndReset();
     getChatMemberName();
 
     const activeRoomId = getRoomId();
     if (activeRoomId) {
-        if (ChatManager.isSaveTarget(document, SELECTORS)) {
-            AppState.wasSaveTarget = true;
-            const currentText = ChatManager.getChatText(AppState, SELECTORS, document);
-            if (currentText !== '') {
-                AppState.tmpChatLogText = currentText;
-                AppState.pendingExitChatLogText = currentText;
-            }
-        }
-
         const containers = [...document.querySelectorAll(SELECTORS.chatContainer)];
         const currentContainer = containers.find(container => container !== AppState.previousContainerElement);
         if (currentContainer) {
