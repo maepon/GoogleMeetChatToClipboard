@@ -1,4 +1,4 @@
-# TC-1.5 一時保存テキストエリア不表示 調査報告および確定修正仕様書 (Rev 6: スープ限定 & 誤属性防止・テスト20件確定版)
+# TC-1.5 一時保存テキストエリア不表示 調査報告および確定修正仕様書 (Rev 6: スコープ限定 & 誤属性防止・テスト20件確定版)
 
 `docs/v6/test_result/result003.md` および添付資料 `att_003/dom_sample_fin.txt` にてご報告いただいた **TC-1.5（離脱・退出時に一時保存テキストエリアが表示されない現象）** について、レビューに基づき最根本原因の解明と実機 100% 検出保証の確定修正仕様です。
 
@@ -163,5 +163,5 @@ function updateLogBackup(targetDoc = document) {
 4. 退出後 UI のコピーボタン (`saveChatLog`) が `pendingExitChatLogText` をクリップボードにコピーできること [PASS]
 5. `checkRoomChangeAndReset(targetRoomId)` の引数制御による `Room A` ➔ `/landing` ➔ `Room B` の実コード状態遷移テストにより、新 `Room B` 入室時に `pendingExitChatLogText` が 100% 自動消去されログ混入が防止されること [PASS]
 6. PinP document に対する `updateLogBackup(pinpDoc)` で `wasSaveTarget` およびログ退避が正しく機能すること [PASS]
-7. `checkAndCreateExitedUI()` の三経路（初回直接チェック・Observer・`setInterval`）および複数回呼び出しによる UI の二重生成防止が正しく機能すること [PASS]
+7. `checkAndCreateExitedUI()` の初回・再実行時における UI の二重生成防止が正しく機能すること [PASS]
 8. `pendingExitChatLogText` 未設定時の誤属性付与防止と遅延挿入が正しく機能すること [PASS]

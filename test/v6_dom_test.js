@@ -434,7 +434,7 @@ runTest('content.js 実体: updateLogBackup(targetDoc) の PinP document 対応�
     assert.ok(window.AppState.pendingExitChatLogText.includes('PinPのメッセージ'), 'PinP 内のメッセージが pendingExitChatLogText にバックアップされること');
 });
 
-runTest('content.js 実体: checkAndCreateExitedUI() の三経路(初回・Observer・interval)および二重生成防止検証', () => {
+runTest('content.js 実体: checkAndCreateExitedUI() の初回・再実行時における二重挿入防止検証', () => {
     const exitedDomHtml = `
         <html><body>
             <div class="lAqQo">
