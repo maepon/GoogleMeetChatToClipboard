@@ -140,17 +140,33 @@ runTest('getChatText: チャット非保存ミーティング (EnableDom) では
 
 const att002DomHtml = fs.readFileSync(path.join(__dirname, '../docs/v6/test_result/att_002/dom.txt'), 'utf8');
 
-runTest('getChatText: 同一メンバーの連続送信メッセージ (att_002) が漏れなく抽出されること', () => {
+runTest('getChatText: 同一メンバーの連続送信メッセージ (att_002) が順序通り漏れなく重複なく抽出されること', () => {
     const { document, ChatManager } = createEnvironment(att002DomHtml);
     const appState = { selfName: '前川昌幸' };
     const chatText = ChatManager.getChatText(appState, SELECTORS, document);
 
-    assert.ok(chatText.includes('相手の送信1'), '1件目の相手送信が含まれること');
-    assert.ok(chatText.includes('相手の送信2'), '同一ブロック内の2件目相手送信が含まれること');
-    assert.ok(chatText.includes('じぶんの送信1'), '1件目の自分送信が含まれること');
-    assert.ok(chatText.includes('自分の送信2'), '同一ブロック内の2件目自分送信が含まれること');
-    assert.ok(chatText.includes('あいてのそうしん4'), '4件目相手送信が含まれること');
-    assert.ok(chatText.includes('相手の送信5'), '5件目相手送信が含まれること');
+    const expectedMessages = [
+        '相手の送信1',
+        '相手の送信2',
+        'じぶんの送信1',
+        '自分の送信2',
+        '相手の送信3',
+        '自分の送信3',
+        'あいてのそうしん4',
+        '相手の送信5'
+    ];
+
+    let lastIndex = -1;
+    expectedMessages.forEach(msg => {
+        const index = chatText.indexOf(msg);
+        assert.ok(index > lastIndex, `メッセージ "${msg}" が正しい順序（index: ${index} > ${lastIndex}）で抽出されていること`);
+        lastIndex = index;
+    });
+
+    expectedMessages.forEach(msg => {
+        const occurrences = chatText.split(msg).length - 1;
+        assert.strictEqual(occurrences, 1, `メッセージ "${msg}" が重複なく1回だけ抽出されていること`);
+    });
 });
 
 // ----------------------------------------------------

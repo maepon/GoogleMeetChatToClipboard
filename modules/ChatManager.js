@@ -50,7 +50,6 @@ const ChatManager = {
             textArea.select();
             
             if (document.execCommand('copy')) {
-                appState.chatOutputFlag = true;
                 return true;
             } else {
                 throw new Error('execCommand failed');
@@ -71,10 +70,10 @@ const ChatManager = {
     // PinP環境専用のsaveChat（明示的にPinPウィンドウのdocumentを使用）
     saveChatFromPinP(appState, selectors, pinpDocument) {
         const chatMessage = this.getChatTextFromPinP(appState, selectors, pinpDocument);
-        appState.chatOutputFlag = true;
         if (chatMessage === '') {
             return;
         }
+        appState.tmpChatLogText = chatMessage;
         
         // メインウィンドウにフォーカスを移す
         window.focus();
@@ -84,9 +83,7 @@ const ChatManager = {
         
         // フォーカス移動後に少し待ってからクリップボード書き込み
         setTimeout(() => {
-            navigator.clipboard.writeText(chatMessage).then(() => {
-                appState.chatOutputFlag = true;
-            }).catch(err => {
+            navigator.clipboard.writeText(chatMessage).catch(err => {
                 // フォールバック: execCommandを試行
                 this._execCommandClipboard(chatMessage, appState);
             });
@@ -96,10 +93,10 @@ const ChatManager = {
     // PinP環境でのコピーボタン専用（フォーカス移動なし）
     saveChatFromPinPCopy(appState, selectors, pinpDocument) {
         const chatMessage = this.getChatTextFromPinP(appState, selectors, pinpDocument);
-        appState.chatOutputFlag = true;
         if (chatMessage === '') {
             return;
         }
+        appState.tmpChatLogText = chatMessage;
         
         // フォーカス移動せずにexecCommandを直接使用
         this._execCommandClipboard(chatMessage, appState);
