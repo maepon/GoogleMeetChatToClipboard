@@ -126,11 +126,11 @@ const ChatManager = {
         const chatMessages = [];
 
         messageBlocks.forEach(block => {
-            const textEl = block.querySelector(selectors.messageText);
+            const textElements = block.querySelectorAll(selectors.messageText);
+            if (!textElements || textElements.length === 0) return;
+
             const timeEl = block.querySelector(selectors.messageTime);
             const senderEl = block.querySelector(selectors.messageSender);
-
-            if (!textEl) return;
 
             const getTextContent = (el) => {
                 if (!el) return '';
@@ -141,16 +141,18 @@ const ChatManager = {
             // 発信者表示がない場合は自分発言とし、selfName が無ければ名前表示を行わない
             const sender = senderEl ? getTextContent(senderEl) : (appState ? (appState.selfName || '') : '');
             const time = getTextContent(timeEl);
-            const text = getTextContent(textEl);
 
-            const lines = [];
-            if (sender) lines.push(sender);
-            if (time) lines.push(time);
-            if (text) lines.push(text);
+            textElements.forEach(textEl => {
+                const text = getTextContent(textEl);
+                if (!text) return;
 
-            if (lines.length > 0) {
+                const lines = [];
+                if (sender) lines.push(sender);
+                if (time) lines.push(time);
+                lines.push(text);
+
                 chatMessages.push(lines.join('\n'));
-            }
+            });
         });
 
         return chatMessages.length ? chatMessages.join('\n') : '';

@@ -138,14 +138,19 @@ runTest('getChatText: チャット非保存ミーティング (EnableDom) では
     assert.strictEqual(chatText, '');
 });
 
-runTest('getChatText: チャット保存ミーティング (DisableDom) でのブロック解析・名前フォールバック', () => {
-    const { document, ChatManager } = createEnvironment(disableDomHtml);
-    const appState = { selfName: '自分の名前' };
+const att002DomHtml = fs.readFileSync(path.join(__dirname, '../docs/v6/test_result/att_002/dom.txt'), 'utf8');
+
+runTest('getChatText: 同一メンバーの連続送信メッセージ (att_002) が漏れなく抽出されること', () => {
+    const { document, ChatManager } = createEnvironment(att002DomHtml);
+    const appState = { selfName: '前川昌幸' };
     const chatText = ChatManager.getChatText(appState, SELECTORS, document);
 
-    assert.ok(chatText.length > 0, 'チャットテキストが取得されること');
-    assert.ok(chatText.includes('相手からのチャット') || chatText.includes('自分のチャット'), '本文が含まれること');
-    assert.ok(chatText.includes('1:29'), '時刻が含まれること');
+    assert.ok(chatText.includes('相手の送信1'), '1件目の相手送信が含まれること');
+    assert.ok(chatText.includes('相手の送信2'), '同一ブロック内の2件目相手送信が含まれること');
+    assert.ok(chatText.includes('じぶんの送信1'), '1件目の自分送信が含まれること');
+    assert.ok(chatText.includes('自分の送信2'), '同一ブロック内の2件目自分送信が含まれること');
+    assert.ok(chatText.includes('あいてのそうしん4'), '4件目相手送信が含まれること');
+    assert.ok(chatText.includes('相手の送信5'), '5件目相手送信が含まれること');
 });
 
 // ----------------------------------------------------
