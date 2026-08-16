@@ -182,6 +182,37 @@ function saveChatFromPinPCopy() {
     }
 }
 
+// 退出後 UI の作成・挿入チェック関数
+function checkAndCreateExitedUI() {
+    if (!AppState.wasSaveTarget) {
+        return;
+    }
+    const unprocessedElements = document.querySelectorAll(SELECTORS.unprocessedRemovedMessage);
+    if (!unprocessedElements || unprocessedElements.length === 0) {
+        return;
+    }
+    if (document.querySelector(`#${IDS.chatLogTextArea}`)) {
+        return;
+    }
+    if (!AppState.pendingExitChatLogText) {
+        unprocessedElements.forEach(el => el.setAttribute('data-gmctc-processed', 'true'));
+        return;
+    }
+
+    for (let removeMessageElement of unprocessedElements) {
+        if (removeMessageElement.hasAttribute('data-gmctc-processed')) {
+            continue;
+        }
+        const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.pendingExitChatLogText, saveChatLog, document);
+        if (exitedUI) {
+            removeMessageElement.after(exitedUI);
+            removeMessageElement.setAttribute('data-gmctc-processed', 'true');
+            AppState.exitedUIInserted = true;
+            break;
+        }
+    }
+}
+
 function getChatMemberName() {
     ChatManager.getChatMemberName(AppState, SELECTORS);
 }
@@ -192,33 +223,14 @@ DOMUtils.observeAndAttachEvent(`#${IDS.copyButton}`, 'click', saveChat, true);
 // 退出済みメッセージを監視するためのObserver
 const removedMessageObserver = ObserverManager.observeForElement(
     SELECTORS.unprocessedRemovedMessage,
-    (removeMessageElement) => {
-        if (!AppState.wasSaveTarget) {
-            return;
-        }
-
-        if (removeMessageElement.hasAttribute('data-gmctc-processed')) {
-            return;
-        }
-
-        if (document.querySelector(`#${IDS.chatLogTextArea}`)) {
-            return;
-        }
-
-        if (!AppState.pendingExitChatLogText) {
-            removeMessageElement.setAttribute('data-gmctc-processed', 'true');
-            return;
-        }
-
-        const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.pendingExitChatLogText, saveChatLog, document);
-        if (exitedUI) {
-            removeMessageElement.after(exitedUI);
-            removeMessageElement.setAttribute('data-gmctc-processed', 'true');
-            AppState.exitedUIInserted = true;
-        }
+    () => {
+        checkAndCreateExitedUI();
     },
     false // 切断せず常駐
 );
+
+// 初回直接チェック（スクリプト評価時・すでに DOM が存在する場合の即時実行）
+checkAndCreateExitedUI();
 
 window.addEventListener('beforeunload', (e) => {
     updateLogBackup(document);
@@ -239,6 +251,7 @@ setInterval(() => {
     checkRoomChangeAndReset();
     updateLogBackup(document);
     getChatMemberName();
+    checkAndCreateExitedUI();
 
     const activeRoomId = getRoomId();
     if (activeRoomId) {

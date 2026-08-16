@@ -77,7 +77,7 @@ function createEnvironment(htmlContent, url = 'https://meet.google.com/abc-defg-
     window.eval(uiManagerCode);
 
     if (loadContentJs) {
-        window.eval(contentJsCode + '; window.AppState = AppState; window.saveChat = saveChat; window.getRoomId = getRoomId; window.resetAppState = resetAppState; window.updateLogBackup = updateLogBackup; window.clearExitPendingState = clearExitPendingState; window.checkRoomChangeAndReset = checkRoomChangeAndReset;');
+        window.eval(contentJsCode + '; window.AppState = AppState; window.saveChat = saveChat; window.getRoomId = getRoomId; window.resetAppState = resetAppState; window.updateLogBackup = updateLogBackup; window.clearExitPendingState = clearExitPendingState; window.checkRoomChangeAndReset = checkRoomChangeAndReset; window.checkAndCreateExitedUI = checkAndCreateExitedUI;');
     }
 
     return { 
@@ -432,6 +432,32 @@ runTest('content.js 実体: updateLogBackup(targetDoc) の PinP document 対応�
     window.updateLogBackup(pinpDom.window.document);
     assert.strictEqual(window.AppState.wasSaveTarget, true, 'PinP document でも wasSaveTarget が true になること');
     assert.ok(window.AppState.pendingExitChatLogText.includes('PinPのメッセージ'), 'PinP 内のメッセージが pendingExitChatLogText にバックアップされること');
+});
+
+runTest('content.js 実体: checkAndCreateExitedUI() の三経路(初回・Observer・interval)および二重生成防止検証', () => {
+    const exitedDomHtml = `
+        <html><body>
+            <div class="lAqQo">
+                <h1 class="roSPhc" jsname="r4nke" id="target-removed">ミーティングから退出しました</h1>
+            </div>
+        </body></html>
+    `;
+    const { window, document } = createEnvironment(exitedDomHtml, 'https://meet.google.com/landing');
+    
+    // 状態をアクティブ会議からの退避ログ保持状態にする
+    window.AppState.wasSaveTarget = true;
+    window.AppState.pendingExitChatLogText = '退避されたログ';
+
+    // 1. 初回直接チェック（スクリプト評価時・既存 DOM）の呼び出し
+    window.checkAndCreateExitedUI();
+    const textAreaList1 = document.querySelectorAll(`#${IDS.chatLogTextArea}`);
+    assert.strictEqual(textAreaList1.length, 1, '初回直接チェックによりテキストエリアが挿入されること');
+
+    // 2. interval 連動および多重呼び出し（二重生成防止）の検証
+    window.checkAndCreateExitedUI();
+    window.checkAndCreateExitedUI();
+    const textAreaList2 = document.querySelectorAll(`#${IDS.chatLogTextArea}`);
+    assert.strictEqual(textAreaList2.length, 1, '複数回実行してもテキストエリアが二重挿入されないこと');
 });
 
 // ----------------------------------------------------
