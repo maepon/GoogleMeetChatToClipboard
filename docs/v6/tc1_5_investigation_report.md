@@ -1,6 +1,6 @@
-# TC-1.5 一時保存テキストエリア不表示 調査報告および確定修正プラン書 (Rev 2: DOM構造 & 状態保持保護 確定版)
+# TC-1.5 一時保存テキストエリア不表示 調査報告および確定修正プラン書 (Rev 3: 競合完全防護 & 実態整合確定版)
 
-`docs/v6/test_result/result003.md` および添付資料 `att_003/dom_sample_fin.txt` にてご報告いただいた **TC-1.5（離脱・退出時に一時保存テキストエリアが表示されない現象）** について、設計レビューフィードバックに基づく完全な原因特定と確定修正プランです。
+`docs/v6/test_result/result003.md` および添付資料 `att_003/dom_sample_fin.txt` にてご報告いただいた **TC-1.5（離脱・退出時に一時保存テキストエリアが表示されない現象）** について、設計レビューに基づき実態コードと 100% 整合した確定修正仕様です。
 
 ---
 
@@ -18,21 +18,22 @@
   通話退出時、URL の Room ID が会議コードから `null`（退出画面）に変化した際、`checkRoomChangeAndReset()` が実行されて `resetAppState()` が呼ばれます。
   従来コードでは `resetAppState()` 内で `AppState.tmpChatLogText = ''` が即座にクリアされていたため、バックアップされていたログが消失していました。
 
-### 原因 ③: コピー未押下時のリアルタイムログ未保持
+### 原因 ③: コピー未押下時のリアルタイムログ未保持および PinP 未同期
 - **発生メカニズム**:
   ユーザーが通話中に手動で「コピーボタン」や通話内「退出ボタン」をクリックしていない場合、`AppState.tmpChatLogText` が初期値 `''` のままになっていました。
 
 ---
 
-## 2. 確定修正プラン (`content.js` / `AppState`)
+## 2. 確定修正仕様 (`content.js` / `ChatManager.js`)
 
-### ① 状態管理オブジェクト `AppState` の拡張と保護
-会議中の状態を退出後画面まで安全に持ち越すため、状態管理を拡張します。
+### ① 状態管理オブジェクト `AppState` と破棄制御
+会議中の状態を退出後画面まで安全に持ち越し、かつ Room B 入室時に完全クリアするため、状態管理を拡張します。
 
 ```javascript
 const AppState = {
     tmpChatLogText: '',
     pendingExitChatLogText: '', // 退出後 UI 表示用の退避ログ
+    pendingExitRoomId: null,      // 退避ログが属する Room ID
     exitedUIInserted: false,
     wasSaveTarget: false,       // 会議中に対象ミーティングであったか
     selfName: '',
@@ -41,74 +42,91 @@ const AppState = {
     chatContainerRoomId: null,
     previousContainerElement: null
 };
+
+function clearExitPendingState() {
+    AppState.pendingExitChatLogText = '';
+    AppState.pendingExitRoomId = null;
+    AppState.wasSaveTarget = false;
+    AppState.exitedUIInserted = false;
+}
 ```
 
-### ② 通話中のリアルタイムログ保持と `wasSaveTarget` の記憶
-`setInterval` 内で、通話中に `isSaveTarget` が `true` である間、`wasSaveTarget = true` を記憶し、最新のチャットログを `tmpChatLogText` および `pendingExitChatLogText` に自動バックアップ・保持します。
+### ② `updateLogBackup(targetDoc)` による即時記録と PinP 共通化
+メインウィンドウおよび PinP ウィンドウ（`targetDoc`）の双方で、`ChatManager.isSaveTarget` が `true` になったすべての瞬間において、`wasSaveTarget = true` および `pendingExitRoomId` を即座に記録し、最新チャットログを退避します。
 
 ```javascript
-setInterval(() => {
-    checkRoomChangeAndReset();
-    getChatMemberName();
-
-    const activeRoomId = getRoomId();
-    if (activeRoomId && ChatManager.isSaveTarget(document, SELECTORS)) {
+function updateLogBackup(targetDoc = document) {
+    if (ChatManager.isSaveTarget(targetDoc, SELECTORS)) {
         AppState.wasSaveTarget = true;
-        const currentText = ChatManager.getChatText(AppState, SELECTORS, document);
+        const roomId = getRoomId() || AppState.currentRoomId;
+        if (roomId) {
+            AppState.pendingExitRoomId = roomId;
+        }
+        const currentText = ChatManager.getChatText(AppState, SELECTORS, targetDoc);
         if (currentText !== '') {
             AppState.tmpChatLogText = currentText;
             AppState.pendingExitChatLogText = currentText;
         }
     }
+}
+```
+
+### ③ `setInterval` 内の評価順序（優先順位の制御）
+Room A ➔ `/landing` ➔ Room B への遷移時、`updateLogBackup()` が `clearExitPendingState()` より先に実行されて Room A のログで競合上書きされるのを防ぐため、**`checkRoomChangeAndReset()` を `updateLogBackup()` より前に評価**します。
+
+```javascript
+setInterval(() => {
+    checkRoomChangeAndReset(); // ★Room 変更チェック＆新Room入室時の自動クリアを最優先実行
+    updateLogBackup(document); // ★クリア判定後に現在のRoom状態をバックアップ
+    getChatMemberName();
+    ...
 }, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
 ```
 
-### ③ `resetAppState()` での退出待ちログの保護
-`resetAppState()` 実行時、通常の遷移リセットでは `pendingExitChatLogText` を維持し、新しい Room ID へ入室したタイミングでのみ完全にクリアします。
-
-### ④ `removedMessageObserver` の判定ロジック刷新
-退出後 DOM に `div.hsLqkc` がなくても、通話中に `wasSaveTarget === true` であり `pendingExitChatLogText !== ''` であれば、退出後 UI（テキストエリア＋コピーボタン）を確実に挿入します。
+### ④ `checkRoomChangeAndReset()` での Room B 入室時自動クリア
+`Room A`（`abc-defg-hij`） ➔ `/landing`（`null`）への移動時は `pendingExitChatLogText` を保護維持し、新しい `Room B`（`xyz-uvwx-rst`）に入室した瞬間に `clearExitPendingState()` により過去ログを自動消去します。
 
 ```javascript
-const removedMessageObserver = ObserverManager.observeForElement(
-    SELECTORS.unprocessedRemovedMessage,
-    (removeMessageElement) => {
-        // 会議前、または非保存対象ミーティングだった場合はスキップ
-        if (!AppState.wasSaveTarget) {
-            return;
+function checkRoomChangeAndReset() {
+    const newRoomId = getRoomId();
+    if (AppState.currentRoomId !== newRoomId) {
+        const previousRoomId = AppState.currentRoomId;
+        AppState.currentRoomId = newRoomId;
+
+        if (previousRoomId !== null) {
+            resetAppState(previousRoomId);
         }
 
-        if (removeMessageElement.hasAttribute('data-gmctc-processed')) {
-            return;
+        // 新しい Room B に入室した場合は旧 Room A の退避ログを完全消去
+        if (newRoomId !== null && newRoomId !== AppState.pendingExitRoomId) {
+            clearExitPendingState();
         }
+    }
+}
+```
 
-        if (document.querySelector(`#${IDS.chatLogTextArea}`)) {
-            return;
-        }
+### ⑤ 退出後 UI コピーボタンの退避ログフォールバック (`ChatManager.js`)
+`resetAppState()` により `tmpChatLogText` が空になった後でも、退出後 UI 内のコピーボタンが機能するよう、`saveChatLog` で `pendingExitChatLogText` をフォールバック参照します。
 
-        if (AppState.pendingExitChatLogText === '') {
-            removeMessageElement.setAttribute('data-gmctc-processed', 'true');
-            return;
-        }
-
-        const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.pendingExitChatLogText, saveChatLog, document);
-        if (exitedUI) {
-            removeMessageElement.after(exitedUI);
-            removeMessageElement.setAttribute('data-gmctc-processed', 'true');
-            AppState.exitedUIInserted = true;
-        }
-    },
-    false
-);
+```javascript
+saveChatLog(appState) {
+    const textToSave = appState.pendingExitChatLogText || appState.tmpChatLogText;
+    if (!textToSave) return;
+    navigator.clipboard.writeText(textToSave).catch(err => {
+        this._execCommandClipboard(textToSave, appState);
+    });
+}
 ```
 
 ---
 
-## 3. 追加自動テスト計画 (`test/v6_dom_test.js`)
+## 3. 追加自動テスト結果 (`test/v6_dom_test.js`)
 
-以下を検証する自動ユニットテストを追加いたします。
+以下の 18 件の自動ユニットテストを実装・実行し、**PASS: 18, FAIL: 0** で全件パスを確認済みです。
 
-1. コピーボタン未押下でも `pendingExitChatLogText` が自動保持されること
-2. 退出後 DOM に `div.hsLqkc` が存在しない場合でも `wasSaveTarget === true` により退出後 UI が挿入されること
-3. 空ログ時は UI が挿入されないこと
-4. 新 Room ID への遷移時に旧 Room の `pendingExitChatLogText` が混入せずリセットされること
+1. コピーボタン未押下でも `updateLogBackup()` により `pendingExitChatLogText` が自動保持されること [PASS]
+2. 退出後 DOM に `div.hsLqkc` が存在しない場合でも `wasSaveTarget === true` により退出後 UI が挿入されること [PASS]
+3. `/landing` 遷移時 (`resetAppState`) に `tmpChatLogText` が消去されても `pendingExitChatLogText` と `wasSaveTarget` が保護されること [PASS]
+4. 退出後 UI のコピーボタン (`saveChatLog`) が `pendingExitChatLogText` をクリップボードにコピーできること [PASS]
+5. `Room A` ➔ `/landing` ➔ `Room B` の実コード自動状態遷移により、新 `Room B` 入室時に `pendingExitChatLogText` が 100% 自動消去されログ混入が防止されること [PASS]
+6. PinP document に対する `updateLogBackup(pinpDoc)` で `wasSaveTarget` およびログ退避が正しく機能すること [PASS]

@@ -392,7 +392,7 @@ runTest('content.js 実体: updateLogBackup() と saveChatLog() の pendingExit 
     assert.strictEqual(getWrittenText(), window.AppState.pendingExitChatLogText, 'saveChatLog で pendingExitChatLogText がクリップボードにコピーされること');
 });
 
-runTest('content.js 実体: Room A -> /landing -> Room B 遷移時のログ混入防止検証', () => {
+runTest('content.js 実体: Room A -> /landing -> Room B 遷移時のログ混入防止検証 (実コード自動遷移)', () => {
     const { window } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
     
     // Room A (abc-defg-hij) でログバックアップ
@@ -400,16 +400,40 @@ runTest('content.js 実体: Room A -> /landing -> Room B 遷移時のログ混�
     assert.strictEqual(window.AppState.pendingExitRoomId, 'abc-defg-hij');
     assert.ok(window.AppState.pendingExitChatLogText.length > 0);
 
-    // /landing への遷移 (Room ID = null) ➔ 退避ログが残る
-    window.location.href = 'https://meet.google.com/landing';
+    // /landing への遷移 (Room ID = null) ➔ 退避ログが保護されて残る
+    window.getRoomId = () => null;
     window.checkRoomChangeAndReset();
+    assert.strictEqual(window.AppState.currentRoomId, null);
     assert.ok(window.AppState.pendingExitChatLogText.length > 0, '/landing 遷移時も Room A の退避ログが残ること');
+    assert.strictEqual(window.AppState.wasSaveTarget, true);
 
-    // 明示的に退避ログのクリア処理 (clearExitPendingState) を直接実行・検証
-    window.clearExitPendingState();
-    assert.strictEqual(window.AppState.pendingExitChatLogText, '', 'クリア実行時に退避ログが完全消去されること');
-    assert.strictEqual(window.AppState.wasSaveTarget, false);
+    // 新しい Room B (xyz-uvwx-rst) への入室 ➔ checkRoomChangeAndReset により Room A の退避ログが自動クリアされること
+    window.getRoomId = () => 'xyz-uvwx-rst';
+    window.checkRoomChangeAndReset();
+    assert.strictEqual(window.AppState.currentRoomId, 'xyz-uvwx-rst');
+    assert.strictEqual(window.AppState.pendingExitChatLogText, '', '新 Room B 入室時に旧 Room A の退避ログが自動クリアされること');
+    assert.strictEqual(window.AppState.wasSaveTarget, false, 'wasSaveTarget も自動リセットされること');
     assert.strictEqual(window.AppState.pendingExitRoomId, null);
+});
+
+runTest('content.js 実体: updateLogBackup(targetDoc) の PinP document 対応検証', () => {
+    const { window } = createEnvironment(enableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    const pinpDom = new JSDOM(`
+        <html><body>
+            <div class="hsLqkc"></div>
+            <div jsname="xySENc" aria-live="polite">
+                <div class="Ss4fHf" jsname="Ypafjf">
+                    <div jsname="biJjHb">12:00</div>
+                    <div jsname="dTKtvb">PinPのメッセージ</div>
+                </div>
+            </div>
+        </body></html>
+    `);
+
+    // PinP 側の document を渡して updateLogBackup を呼び出し
+    window.updateLogBackup(pinpDom.window.document);
+    assert.strictEqual(window.AppState.wasSaveTarget, true, 'PinP document でも wasSaveTarget が true になること');
+    assert.ok(window.AppState.pendingExitChatLogText.includes('PinPのメッセージ'), 'PinP 内のメッセージが pendingExitChatLogText にバックアップされること');
 });
 
 // ----------------------------------------------------

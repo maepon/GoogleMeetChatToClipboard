@@ -106,14 +106,14 @@ function checkRoomChangeAndReset() {
     }
 }
 
-function updateLogBackup() {
-    if (ChatManager.isSaveTarget(document, SELECTORS)) {
+function updateLogBackup(targetDoc = document) {
+    if (ChatManager.isSaveTarget(targetDoc, SELECTORS)) {
         AppState.wasSaveTarget = true;
         const roomId = getRoomId() || AppState.currentRoomId;
         if (roomId) {
             AppState.pendingExitRoomId = roomId;
         }
-        const currentText = ChatManager.getChatText(AppState, SELECTORS, document);
+        const currentText = ChatManager.getChatText(AppState, SELECTORS, targetDoc);
         if (currentText !== '') {
             AppState.tmpChatLogText = currentText;
             AppState.pendingExitChatLogText = currentText;
@@ -132,7 +132,7 @@ document.addEventListener('keydown', function(event) {
 
 // チャット要素を探してクリップボードに保存
 function saveChat() {
-    updateLogBackup();
+    updateLogBackup(document);
     if (!ChatManager.isSaveTarget(document, SELECTORS)) {
         return;
     }
@@ -151,6 +151,7 @@ function saveChatFromPinP() {
     // PinPウィンドウが存在するかチェック
     if (window.documentPictureInPicture && window.documentPictureInPicture.window) {
         const pinpDoc = window.documentPictureInPicture.window.document;
+        updateLogBackup(pinpDoc);
         if (!ChatManager.isSaveTarget(pinpDoc, SELECTORS)) {
             return;
         }
@@ -168,6 +169,7 @@ function saveChatFromPinPCopy() {
     // PinPウィンドウが存在するかチェック
     if (window.documentPictureInPicture && window.documentPictureInPicture.window) {
         const pinpDoc = window.documentPictureInPicture.window.document;
+        updateLogBackup(pinpDoc);
         if (!ChatManager.isSaveTarget(pinpDoc, SELECTORS)) {
             return;
         }
@@ -219,7 +221,7 @@ const removedMessageObserver = ObserverManager.observeForElement(
 );
 
 window.addEventListener('beforeunload', (e) => {
-    updateLogBackup();
+    updateLogBackup(document);
     if (!ChatManager.isSaveTarget(document, SELECTORS)) {
         return;
     }
@@ -234,8 +236,8 @@ window.addEventListener('beforeunload', (e) => {
 UIManager.initializeCopyButtonObserver(CONFIG, SELECTORS, IDS, document);
 
 setInterval(() => {
-    updateLogBackup();
     checkRoomChangeAndReset();
+    updateLogBackup(document);
     getChatMemberName();
 
     const activeRoomId = getRoomId();
