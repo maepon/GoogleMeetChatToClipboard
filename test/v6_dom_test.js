@@ -140,33 +140,100 @@ runTest('getChatText: チャット非保存ミーティング (EnableDom) では
 
 const att002DomHtml = fs.readFileSync(path.join(__dirname, '../docs/v6/test_result/att_002/dom.txt'), 'utf8');
 
-runTest('getChatText: 同一メンバーの連続送信メッセージ (att_002) が順序通り漏れなく重複なく抽出されること', () => {
+runTest('getChatText: att_002 実機DOMでのブロック単位ヘッダー抽出の完全一致検証', () => {
     const { document, ChatManager } = createEnvironment(att002DomHtml);
-    const appState = { selfName: '前川昌幸' };
+    const appState = { selfName: '' };
     const chatText = ChatManager.getChatText(appState, SELECTORS, document);
 
-    const expectedMessages = [
+    const expectedText = [
+        '12:37',
         '相手の送信1',
         '相手の送信2',
+        '前川昌幸',
+        '12:38',
         'じぶんの送信1',
         '自分の送信2',
+        '12:40',
         '相手の送信3',
+        '前川昌幸',
+        '12:40',
         '自分の送信3',
+        '12:41',
         'あいてのそうしん4',
         '相手の送信5'
-    ];
+    ].join('\n');
 
-    let lastIndex = -1;
-    expectedMessages.forEach(msg => {
-        const index = chatText.indexOf(msg);
-        assert.ok(index > lastIndex, `メッセージ "${msg}" が正しい順序（index: ${index} > ${lastIndex}）で抽出されていること`);
-        lastIndex = index;
-    });
+    assert.strictEqual(chatText, expectedText, '話者名・時刻がブロック毎に冒頭に1度だけ出力され、完全一致すること');
+});
 
-    expectedMessages.forEach(msg => {
-        const occurrences = chatText.split(msg).length - 1;
-        assert.strictEqual(occurrences, 1, `メッセージ "${msg}" が重複なく1回だけ抽出されていること`);
-    });
+runTest('getChatText: フォーマット検証（話者あり・自分発言・空要素・単独発言）', () => {
+    const { ChatManager } = createEnvironment('');
+
+    // 1. 話者名ありの連続発言
+    const dom1 = new JSDOM(`
+        <html><body>
+            <div class="hsLqkc"></div>
+            <div jsname="xySENc" aria-live="polite">
+                <div class="Ss4fHf" jsname="Ypafjf">
+                    <div class="poVWob">テスト太郎</div>
+                    <div jsname="biJjHb">12:00</div>
+                    <div jsname="dTKtvb">メッセージ1</div>
+                    <div jsname="dTKtvb">メッセージ2</div>
+                </div>
+            </div>
+        </body></html>
+    `);
+    const text1 = ChatManager.getChatText({ selfName: '自分' }, SELECTORS, dom1.window.document);
+    assert.strictEqual(text1, 'テスト太郎\n12:00\nメッセージ1\nメッセージ2');
+
+    // 2. 話者名なし、selfName あり（自分の連続発言）
+    const dom2 = new JSDOM(`
+        <html><body>
+            <div class="hsLqkc"></div>
+            <div jsname="xySENc" aria-live="polite">
+                <div class="Ss4fHf" jsname="Ypafjf">
+                    <div jsname="biJjHb">12:05</div>
+                    <div jsname="dTKtvb">自分の発言1</div>
+                    <div jsname="dTKtvb">自分の発言2</div>
+                </div>
+            </div>
+        </body></html>
+    `);
+    const text2 = ChatManager.getChatText({ selfName: '自分太郎' }, SELECTORS, dom2.window.document);
+    assert.strictEqual(text2, '自分太郎\n12:05\n自分の発言1\n自分の発言2');
+
+    // 3. 話者名なし、selfName なし
+    const dom3 = new JSDOM(`
+        <html><body>
+            <div class="hsLqkc"></div>
+            <div jsname="xySENc" aria-live="polite">
+                <div class="Ss4fHf" jsname="Ypafjf">
+                    <div jsname="biJjHb">12:10</div>
+                    <div jsname="dTKtvb">匿名発言1</div>
+                    <div jsname="dTKtvb"></div>
+                    <div jsname="dTKtvb">匿名発言2</div>
+                </div>
+            </div>
+        </body></html>
+    `);
+    const text3 = ChatManager.getChatText({ selfName: '' }, SELECTORS, dom3.window.document);
+    assert.strictEqual(text3, '12:10\n匿名発言1\n匿名発言2');
+
+    // 4. 単独発言（従来形式維持）
+    const dom4 = new JSDOM(`
+        <html><body>
+            <div class="hsLqkc"></div>
+            <div jsname="xySENc" aria-live="polite">
+                <div class="Ss4fHf" jsname="Ypafjf">
+                    <div class="poVWob">花子</div>
+                    <div jsname="biJjHb">12:15</div>
+                    <div jsname="dTKtvb">単独メッセージ</div>
+                </div>
+            </div>
+        </body></html>
+    `);
+    const text4 = ChatManager.getChatText({ selfName: '' }, SELECTORS, dom4.window.document);
+    assert.strictEqual(text4, '花子\n12:15\n単独メッセージ');
 });
 
 // ----------------------------------------------------

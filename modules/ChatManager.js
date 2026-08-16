@@ -139,17 +139,22 @@ const ChatManager = {
             const sender = senderEl ? getTextContent(senderEl) : (appState ? (appState.selfName || '') : '');
             const time = getTextContent(timeEl);
 
+            const blockLines = [];
+            if (sender) blockLines.push(sender);
+            if (time) blockLines.push(time);
+
+            let hasValidText = false;
             textElements.forEach(textEl => {
                 const text = getTextContent(textEl);
-                if (!text) return;
-
-                const lines = [];
-                if (sender) lines.push(sender);
-                if (time) lines.push(time);
-                lines.push(text);
-
-                chatMessages.push(lines.join('\n'));
+                if (text) {
+                    blockLines.push(text);
+                    hasValidText = true;
+                }
             });
+
+            if (hasValidText && blockLines.length > 0) {
+                chatMessages.push(blockLines.join('\n'));
+            }
         });
 
         return chatMessages.length ? chatMessages.join('\n') : '';
