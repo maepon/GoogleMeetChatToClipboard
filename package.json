@@ -1,6 +1,6 @@
 {
   "name": "google-meet-chat-to-clipboard",
-  "version": "5.2.0",
+  "version": "6.0.0",
   "description": "Chrome extension to copy Google Meet chat to clipboard on exit",
   "scripts": {
     "test": "node test/v6_dom_test.js",

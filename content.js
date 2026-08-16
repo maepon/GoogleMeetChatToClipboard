@@ -52,7 +52,7 @@ function getRoomId() {
 // 状態管理オブジェクト
 const AppState = {
     tmpChatLogText: '',
-    chatOutputFlag: false,
+    exitedUIInserted: false,
     selfName: '',
     currentRoomId: getRoomId(),
     chatContainerElement: null,
@@ -77,7 +77,7 @@ function resetAppState(previousRoomId) {
     AppState.chatContainerElement = null;
     AppState.chatContainerRoomId = null;
     AppState.tmpChatLogText = '';
-    AppState.chatOutputFlag = false;
+    AppState.exitedUIInserted = false;
     AppState.selfName = '';
 }
 
@@ -156,21 +156,24 @@ const removedMessageObserver = ObserverManager.observeForElement(
             return;
         }
 
-        const activeContainer = (AppState.chatContainerRoomId === AppState.currentRoomId)
-            ? AppState.chatContainerElement
-            : null;
-
-        if (!activeContainer || !activeContainer.contains(removeMessageElement)) {
+        if (removeMessageElement.hasAttribute('data-gmctc-processed')) {
             return;
         }
 
-        if (AppState.chatOutputFlag === false) {
-            const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.tmpChatLogText, saveChatLog, document);
-            if (exitedUI) {
-                removeMessageElement.after(exitedUI);
-                removeMessageElement.setAttribute('data-gmctc-processed', 'true');
-                AppState.chatOutputFlag = true;
-            }
+        if (document.querySelector(`#${IDS.chatLogTextArea}`)) {
+            return;
+        }
+
+        if (AppState.tmpChatLogText === '') {
+            removeMessageElement.setAttribute('data-gmctc-processed', 'true');
+            return;
+        }
+
+        const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.tmpChatLogText, saveChatLog, document);
+        if (exitedUI) {
+            removeMessageElement.after(exitedUI);
+            removeMessageElement.setAttribute('data-gmctc-processed', 'true');
+            AppState.exitedUIInserted = true;
         }
     },
     false // 切断せず常駐

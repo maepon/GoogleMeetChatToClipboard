@@ -248,43 +248,38 @@ runTest('SPA 遷移: 3つ以上のコンテナが並存する場合の動作', (
     assert.strictEqual(currentContainer.id, 'container-2', '旧コンテナ(container-1)以外の最初のコンテナが選ばれること');
 });
 
-runTest('removedMessageObserver: 新コンテナ配下の removedMessage 判定と processed 付与', () => {
+runTest('removedMessageObserver: 退出済み画面での UI 挿入と processed 付与', () => {
     const { document, UIManager } = createEnvironment(`
         <html>
             <body>
                 <div class="hsLqkc"></div>
-                <div jsname="xySENc" aria-live="polite" id="active-container">
-                    <div class="lAqQo"><div class="roSPhc" jsname="r4nke" id="target-removed">退出済み要素</div></div>
-                </div>
+                <div class="lAqQo"><div class="roSPhc" jsname="r4nke" id="target-removed">退出済み要素</div></div>
             </body>
         </html>
     `);
 
     const AppState = {
         currentRoomId: 'room-1',
-        chatContainerElement: document.querySelector('#active-container'),
-        chatContainerRoomId: 'room-1',
-        chatOutputFlag: false,
+        exitedUIInserted: false,
         tmpChatLogText: 'チャットログ'
     };
 
     const removeMessageElement = document.querySelector('#target-removed');
-    const activeContainer = (AppState.chatContainerRoomId === AppState.currentRoomId)
-        ? AppState.chatContainerElement
-        : null;
-
-    assert.ok(activeContainer && activeContainer.contains(removeMessageElement), 'アクティブコンテナの子孫であること');
-
-    if (AppState.chatOutputFlag === false) {
+    
+    if (
+        !removeMessageElement.hasAttribute('data-gmctc-processed') &&
+        !document.querySelector(`#${IDS.chatLogTextArea}`) &&
+        AppState.tmpChatLogText !== ''
+    ) {
         const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.tmpChatLogText, () => {}, document);
         assert.notStrictEqual(exitedUI, null, 'exitedUI が作成されること');
         removeMessageElement.after(exitedUI);
         removeMessageElement.setAttribute('data-gmctc-processed', 'true');
-        AppState.chatOutputFlag = true;
+        AppState.exitedUIInserted = true;
     }
 
     assert.strictEqual(removeMessageElement.getAttribute('data-gmctc-processed'), 'true');
-    assert.strictEqual(AppState.chatOutputFlag, true);
+    assert.strictEqual(AppState.exitedUIInserted, true);
 });
 
 // ----------------------------------------------------

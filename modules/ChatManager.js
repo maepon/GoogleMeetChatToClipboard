@@ -27,12 +27,13 @@ const ChatManager = {
     saveChat(appState, selectors, targetDoc) {
         const doc = targetDoc || this.getTargetDocument();
         const chatMessage = this.getChatText(appState, selectors, doc);
-        appState.chatOutputFlag = true;
         if (chatMessage === '') {
             return;
         }
+        appState.tmpChatLogText = chatMessage;
         navigator.clipboard.writeText(chatMessage).catch(err => {
             console.error(chrome.i18n.getMessage('clipboardWriteError'), err);
+            this._execCommandClipboard(chatMessage, appState);
         });
     },
 
