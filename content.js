@@ -52,7 +52,9 @@ function getRoomId() {
 // 状態管理オブジェクト
 const AppState = {
     tmpChatLogText: '',
+    pendingExitChatLogText: '',
     exitedUIInserted: false,
+    wasSaveTarget: false,
     selfName: '',
     currentRoomId: getRoomId(),
     chatContainerElement: null,
@@ -77,7 +79,9 @@ function resetAppState(previousRoomId) {
     AppState.chatContainerElement = null;
     AppState.chatContainerRoomId = null;
     AppState.tmpChatLogText = '';
+    AppState.pendingExitChatLogText = '';
     AppState.exitedUIInserted = false;
+    AppState.wasSaveTarget = false;
     AppState.selfName = '';
 }
 
@@ -107,6 +111,9 @@ function saveChat() {
         return;
     }
     ChatManager.saveChat(AppState, SELECTORS, document);
+    if (AppState.tmpChatLogText !== '') {
+        AppState.pendingExitChatLogText = AppState.tmpChatLogText;
+    }
 }
 
 function saveChatLog() {
@@ -122,6 +129,9 @@ function saveChatFromPinP() {
             return;
         }
         ChatManager.saveChatFromPinP(AppState, SELECTORS, pinpDoc);
+        if (AppState.tmpChatLogText !== '') {
+            AppState.pendingExitChatLogText = AppState.tmpChatLogText;
+        }
     } else {
         saveChat();
     }
@@ -136,6 +146,9 @@ function saveChatFromPinPCopy() {
             return;
         }
         ChatManager.saveChatFromPinPCopy(AppState, SELECTORS, pinpDoc);
+        if (AppState.tmpChatLogText !== '') {
+            AppState.pendingExitChatLogText = AppState.tmpChatLogText;
+        }
     } else {
         saveChat();
     }
@@ -152,7 +165,7 @@ DOMUtils.observeAndAttachEvent(`#${IDS.copyButton}`, 'click', saveChat, true);
 const removedMessageObserver = ObserverManager.observeForElement(
     SELECTORS.unprocessedRemovedMessage,
     (removeMessageElement) => {
-        if (!ChatManager.isSaveTarget(document, SELECTORS)) {
+        if (!AppState.wasSaveTarget) {
             return;
         }
 
@@ -164,12 +177,12 @@ const removedMessageObserver = ObserverManager.observeForElement(
             return;
         }
 
-        if (AppState.tmpChatLogText === '') {
+        if (AppState.pendingExitChatLogText === '') {
             removeMessageElement.setAttribute('data-gmctc-processed', 'true');
             return;
         }
 
-        const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.tmpChatLogText, saveChatLog, document);
+        const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.pendingExitChatLogText, saveChatLog, document);
         if (exitedUI) {
             removeMessageElement.after(exitedUI);
             removeMessageElement.setAttribute('data-gmctc-processed', 'true');
@@ -186,6 +199,7 @@ window.addEventListener('beforeunload', (e) => {
     const chatText = ChatManager.getChatText(AppState, SELECTORS, document);
     if (chatText !== '') {
         AppState.tmpChatLogText = chatText;
+        AppState.pendingExitChatLogText = chatText;
         e.returnValue = 'Remove?';
     }
 });
@@ -198,6 +212,15 @@ setInterval(() => {
 
     const activeRoomId = getRoomId();
     if (activeRoomId) {
+        if (ChatManager.isSaveTarget(document, SELECTORS)) {
+            AppState.wasSaveTarget = true;
+            const currentText = ChatManager.getChatText(AppState, SELECTORS, document);
+            if (currentText !== '') {
+                AppState.tmpChatLogText = currentText;
+                AppState.pendingExitChatLogText = currentText;
+            }
+        }
+
         const containers = [...document.querySelectorAll(SELECTORS.chatContainer)];
         const currentContainer = containers.find(container => container !== AppState.previousContainerElement);
         if (currentContainer) {

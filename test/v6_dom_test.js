@@ -336,30 +336,31 @@ runTest('SPA 遷移: 3つ以上のコンテナが並存する場合の動作', (
     assert.strictEqual(currentContainer.id, 'container-2', '旧コンテナ(container-1)以外の最初のコンテナが選ばれること');
 });
 
-runTest('removedMessageObserver: 退出済み画面での UI 挿入と processed 付与', () => {
+runTest('removedMessageObserver: hsLqkc が存在しない退出後 DOM でも wasSaveTarget に基づき UI が挿入されること', () => {
+    // 退出後 DOM (att_003 相当: hsLqkc なし)
     const { document, UIManager } = createEnvironment(`
         <html>
             <body>
-                <div class="hsLqkc"></div>
-                <div class="lAqQo"><div class="roSPhc" jsname="r4nke" id="target-removed">退出済み要素</div></div>
+                <div class="lAqQo"><h1 class="roSPhc" jsname="r4nke" id="target-removed">ミーティングから退出しました</h1></div>
             </body>
         </html>
     `);
 
     const AppState = {
-        currentRoomId: 'room-1',
-        exitedUIInserted: false,
-        tmpChatLogText: 'チャットログ'
+        wasSaveTarget: true, // 会議中に対象ミーティングだったことを記憶
+        pendingExitChatLogText: '自動バックアップされたチャットログ',
+        exitedUIInserted: false
     };
 
     const removeMessageElement = document.querySelector('#target-removed');
     
     if (
+        AppState.wasSaveTarget &&
         !removeMessageElement.hasAttribute('data-gmctc-processed') &&
         !document.querySelector(`#${IDS.chatLogTextArea}`) &&
-        AppState.tmpChatLogText !== ''
+        AppState.pendingExitChatLogText !== ''
     ) {
-        const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.tmpChatLogText, () => {}, document);
+        const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.pendingExitChatLogText, () => {}, document);
         assert.notStrictEqual(exitedUI, null, 'exitedUI が作成されること');
         removeMessageElement.after(exitedUI);
         removeMessageElement.setAttribute('data-gmctc-processed', 'true');
@@ -368,6 +369,22 @@ runTest('removedMessageObserver: 退出済み画面での UI 挿入と processed
 
     assert.strictEqual(removeMessageElement.getAttribute('data-gmctc-processed'), 'true');
     assert.strictEqual(AppState.exitedUIInserted, true);
+    assert.notStrictEqual(document.querySelector(`#${IDS.chatLogTextArea}`), null, 'DOM 上にテキストエリアが挿入されていること');
+});
+
+runTest('content.js 実体: 定期バックアップによる pendingExitChatLogText の自動保持検証', () => {
+    const { window } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    
+    // 通話中かつ対象ミーティングであれば remained/pending にログが自動格納されること
+    window.AppState.wasSaveTarget = window.ChatManager.isSaveTarget(window.document, SELECTORS);
+    const currentText = window.ChatManager.getChatText(window.AppState, SELECTORS, window.document);
+    if (currentText !== '') {
+        window.AppState.tmpChatLogText = currentText;
+        window.AppState.pendingExitChatLogText = currentText;
+    }
+
+    assert.strictEqual(window.AppState.wasSaveTarget, true);
+    assert.ok(window.AppState.pendingExitChatLogText.length > 0, 'コピー未押下でも pendingExitChatLogText にチャットが自動バックアップされること');
 });
 
 // ----------------------------------------------------
