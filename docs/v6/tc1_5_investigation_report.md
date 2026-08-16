@@ -1,6 +1,14 @@
-# TC-1.5 一時保存テキストエリア不表示 調査報告および確定修正仕様書 (Rev 5: 三経路多重検出 & 堅牢順序確定版)
+# TC-1.5 一時保存テキストエリア不表示 調査報告および確定修正仕様書 (Rev 6: スープ限定 & 誤属性防止・テスト20件確定版)
 
 `docs/v6/test_result/result003.md` および添付資料 `att_003/dom_sample_fin.txt` にてご報告いただいた **TC-1.5（離脱・退出時に一時保存テキストエリアが表示されない現象）** について、レビューに基づき最根本原因の解明と実機 100% 検出保証の確定修正仕様です。
+
+---
+
+### 対象範囲（スコープ）
+
+本対応の対象は、`beforeunload` ダイアログ表示後に「キャンセル」を選択し、同一ページ・同一 JavaScript コンテキストへ復帰するケースとする。
+
+ページ離脱を確定した後の全画面リロードや、新しい JavaScript コンテキストでのログ復元は対象外とする。
 
 ---
 
@@ -51,8 +59,9 @@ function clearExitPendingState() {
 }
 ```
 
-### ② 三経路（初回直接チェック・Observer・`setInterval`）による多重検出関数
-退出後 DOM で `div.hsLqkc` が消えるため、`AppState.wasSaveTarget` と `AppState.pendingExitChatLogText` のみで判定します。また `querySelectorAll()` で走査して複数 DOM 残留時にも安全に対応します。
+### ② 三経路（初回直接チェック・Observer・`setInterval`）による多重検出および属性誤付与ガード
+退出後 DOM で `div.hsLqkc` が消えるため、`AppState.wasSaveTarget` と `AppState.pendingExitChatLogText` のみで判定します。
+また、ログがまだバックアップされていないタイミングで検出された場合、`data-gmctc-processed` 属性を付与せずに `return` し、次回チェックへ安全に委ねます。
 
 ```javascript
 // 退出後 UI の作成・挿入チェック関数（独立定義）
@@ -68,8 +77,7 @@ function checkAndCreateExitedUI() {
         return;
     }
     if (!AppState.pendingExitChatLogText) {
-        unprocessedElements.forEach(el => el.setAttribute('data-gmctc-processed', 'true'));
-        return;
+        return; // ★バックアップ完了前に発火しても data-gmctc-processed 属性を付与せず次回に委ねる
     }
 
     for (let removeMessageElement of unprocessedElements) {
@@ -81,7 +89,7 @@ function checkAndCreateExitedUI() {
             removeMessageElement.after(exitedUI);
             removeMessageElement.setAttribute('data-gmctc-processed', 'true');
             AppState.exitedUIInserted = true;
-            break; // 1件生成したら重複防止のため即座にループを抜ける
+            break; // 1件生成したら重複防止のため即座にループを抜ける
         }
     }
 }
@@ -147,7 +155,7 @@ function updateLogBackup(targetDoc = document) {
 
 ## 3. 追加自動テスト結果 (`test/v6_dom_test.js`)
 
-以下の全 **19 件** の自動ユニットテストを実装・実行し、**PASS: 19, FAIL: 0** で全件パスを確認済みです。
+以下の全 **20 件** の自動ユニットテストを実装・実行し、**PASS: 20, FAIL: 0** で全件パスを確認済みです。
 
 1. コピーボタン未押下でも `updateLogBackup()` により `pendingExitChatLogText` が自動保持されること [PASS]
 2. 退出後 DOM に `div.hsLqkc` が存在しない場合でも `wasSaveTarget === true` により退出後 UI が挿入されること [PASS]
@@ -156,3 +164,4 @@ function updateLogBackup(targetDoc = document) {
 5. `checkRoomChangeAndReset(targetRoomId)` の引数制御による `Room A` ➔ `/landing` ➔ `Room B` の実コード状態遷移テストにより、新 `Room B` 入室時に `pendingExitChatLogText` が 100% 自動消去されログ混入が防止されること [PASS]
 6. PinP document に対する `updateLogBackup(pinpDoc)` で `wasSaveTarget` およびログ退避が正しく機能すること [PASS]
 7. `checkAndCreateExitedUI()` の三経路（初回直接チェック・Observer・`setInterval`）および複数回呼び出しによる UI の二重生成防止が正しく機能すること [PASS]
+8. `pendingExitChatLogText` 未設定時の誤属性付与防止と遅延挿入が正しく機能すること [PASS]

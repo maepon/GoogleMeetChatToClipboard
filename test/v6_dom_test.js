@@ -460,6 +460,31 @@ runTest('content.js 実体: checkAndCreateExitedUI() の三経路(初回・Obser
     assert.strictEqual(textAreaList2.length, 1, '複数回実行してもテキストエリアが二重挿入されないこと');
 });
 
+runTest('content.js 実体: pendingExitChatLogText 未設定時の誤属性付与防止と遅延挿入検証', () => {
+    const exitedDomHtml = `
+        <html><body>
+            <div class="lAqQo">
+                <h1 class="roSPhc" jsname="r4nke" id="target-removed">ミーティングから退出しました</h1>
+            </div>
+        </body></html>
+    `;
+    const { window, document } = createEnvironment(exitedDomHtml, 'https://meet.google.com/landing');
+    
+    window.AppState.wasSaveTarget = true;
+    window.AppState.pendingExitChatLogText = ''; // まだログが空の状態
+
+    // ログが空の状態で checkAndCreateExitedUI が先行発火
+    window.checkAndCreateExitedUI();
+    const removeMsgEl = document.querySelector('#target-removed');
+    assert.strictEqual(removeMsgEl.hasAttribute('data-gmctc-processed'), false, 'ログが空の時点では data-gmctc-processed 属性が付与されないこと');
+
+    // その後ログがバックアップされた状態で再度 checkAndCreateExitedUI が発火
+    window.AppState.pendingExitChatLogText = '遅延バックアップログ';
+    window.checkAndCreateExitedUI();
+    assert.strictEqual(removeMsgEl.hasAttribute('data-gmctc-processed'), true, 'ログ設定後に正しく属性が付与されること');
+    assert.notStrictEqual(document.querySelector(`#${IDS.chatLogTextArea}`), null, 'ログ設定後にテキストエリアが挿入されること');
+});
+
 // ----------------------------------------------------
 // テスト結果集計
 // ----------------------------------------------------

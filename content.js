@@ -195,7 +195,6 @@ function checkAndCreateExitedUI() {
         return;
     }
     if (!AppState.pendingExitChatLogText) {
-        unprocessedElements.forEach(el => el.setAttribute('data-gmctc-processed', 'true'));
         return;
     }
 
