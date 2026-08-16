@@ -1,6 +1,6 @@
-# TC-1.5 一時保存テキストエリア不表示 調査報告および確定修正プラン書 (Rev 3: 競合完全防護 & 実態整合確定版)
+# TC-1.5 一時保存テキストエリア不表示 調査報告および確定修正仕様書 (Rev 4: 自動テスト18件 & 明示的状態遷移確定版)
 
-`docs/v6/test_result/result003.md` および添付資料 `att_003/dom_sample_fin.txt` にてご報告いただいた **TC-1.5（離脱・退出時に一時保存テキストエリアが表示されない現象）** について、設計レビューに基づき実態コードと 100% 整合した確定修正仕様です。
+`docs/v6/test_result/result003.md` および添付資料 `att_003/dom_sample_fin.txt` にてご報告いただいた **TC-1.5（離脱・退出時に一時保存テキストエリアが表示されない現象）** について、設計レビューに基づき実態コードおよびモック非依存の堅牢テストと 100% 整合した確定修正仕様です。
 
 ---
 
@@ -76,19 +76,19 @@ Room A ➔ `/landing` ➔ Room B への遷移時、`updateLogBackup()` が `clea
 
 ```javascript
 setInterval(() => {
-    checkRoomChangeAndReset(); // ★Room 変更チェック＆新Room入室時の自動クリアを最優先実行
-    updateLogBackup(document); // ★クリア判定後に現在のRoom状態をバックアップ
+    checkRoomChangeAndReset(); // ★1. Room 変更チェック＆新Room入室時の自動クリアを最優先実行！
+    updateLogBackup(document); // ★2. クリア判定後に現在のRoom状態をバックアップ
     getChatMemberName();
     ...
 }, CONFIG.TIMEOUTS.MEMBER_NAME_CHECK);
 ```
 
-### ④ `checkRoomChangeAndReset()` での Room B 入室時自動クリア
-`Room A`（`abc-defg-hij`） ➔ `/landing`（`null`）への移動時は `pendingExitChatLogText` を保護維持し、新しい `Room B`（`xyz-uvwx-rst`）に入室した瞬間に `clearExitPendingState()` により過去ログを自動消去します。
+### ④ `checkRoomChangeAndReset(overrideRoomId)` での Room B 入室時自動クリア
+`Room A`（`abc-defg-hij`） ➔ `/landing`（`null`）への移動時は `pendingExitChatLogText` を保護維持し、新しい `Room B`（`xyz-uvwx-rst`）に入室した瞬間に `clearExitPendingState()` により過去ログを自動消去します。また引数 `overrideRoomId` を受け取れるようにし、モック非依存の直接呼出しテストを可能にしました。
 
 ```javascript
-function checkRoomChangeAndReset() {
-    const newRoomId = getRoomId();
+function checkRoomChangeAndReset(overrideRoomId = undefined) {
+    const newRoomId = overrideRoomId !== undefined ? overrideRoomId : getRoomId();
     if (AppState.currentRoomId !== newRoomId) {
         const previousRoomId = AppState.currentRoomId;
         AppState.currentRoomId = newRoomId;
@@ -122,11 +122,11 @@ saveChatLog(appState) {
 
 ## 3. 追加自動テスト結果 (`test/v6_dom_test.js`)
 
-以下の 18 件の自動ユニットテストを実装・実行し、**PASS: 18, FAIL: 0** で全件パスを確認済みです。
+以下の全 **18 件** の自動ユニットテストを実装・実行し、**PASS: 18, FAIL: 0** で全件パスを確認済みです。
 
 1. コピーボタン未押下でも `updateLogBackup()` により `pendingExitChatLogText` が自動保持されること [PASS]
 2. 退出後 DOM に `div.hsLqkc` が存在しない場合でも `wasSaveTarget === true` により退出後 UI が挿入されること [PASS]
 3. `/landing` 遷移時 (`resetAppState`) に `tmpChatLogText` が消去されても `pendingExitChatLogText` と `wasSaveTarget` が保護されること [PASS]
 4. 退出後 UI のコピーボタン (`saveChatLog`) が `pendingExitChatLogText` をクリップボードにコピーできること [PASS]
-5. `Room A` ➔ `/landing` ➔ `Room B` の実コード自動状態遷移により、新 `Room B` 入室時に `pendingExitChatLogText` が 100% 自動消去されログ混入が防止されること [PASS]
+5. `checkRoomChangeAndReset(targetRoomId)` の引数制御による `Room A` ➔ `/landing` ➔ `Room B` の実コード状態遷移テストにより、新 `Room B` 入室時に `pendingExitChatLogText` が 100% 自動消去されログ混入が防止されること [PASS]
 6. PinP document に対する `updateLogBackup(pinpDoc)` で `wasSaveTarget` およびログ退避が正しく機能すること [PASS]

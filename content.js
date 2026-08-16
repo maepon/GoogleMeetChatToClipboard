@@ -90,8 +90,8 @@ function resetAppState(previousRoomId) {
     AppState.selfName = '';
 }
 
-function checkRoomChangeAndReset() {
-    const newRoomId = getRoomId();
+function checkRoomChangeAndReset(overrideRoomId = undefined) {
+    const newRoomId = overrideRoomId !== undefined ? overrideRoomId : getRoomId();
     if (AppState.currentRoomId !== newRoomId) {
         const previousRoomId = AppState.currentRoomId;
         AppState.currentRoomId = newRoomId;

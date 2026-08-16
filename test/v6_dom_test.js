@@ -401,15 +401,13 @@ runTest('content.js 実体: Room A -> /landing -> Room B 遷移時のログ混�
     assert.ok(window.AppState.pendingExitChatLogText.length > 0);
 
     // /landing への遷移 (Room ID = null) ➔ 退避ログが保護されて残る
-    window.getRoomId = () => null;
-    window.checkRoomChangeAndReset();
+    window.checkRoomChangeAndReset(null);
     assert.strictEqual(window.AppState.currentRoomId, null);
     assert.ok(window.AppState.pendingExitChatLogText.length > 0, '/landing 遷移時も Room A の退避ログが残ること');
     assert.strictEqual(window.AppState.wasSaveTarget, true);
 
     // 新しい Room B (xyz-uvwx-rst) への入室 ➔ checkRoomChangeAndReset により Room A の退避ログが自動クリアされること
-    window.getRoomId = () => 'xyz-uvwx-rst';
-    window.checkRoomChangeAndReset();
+    window.checkRoomChangeAndReset('xyz-uvwx-rst');
     assert.strictEqual(window.AppState.currentRoomId, 'xyz-uvwx-rst');
     assert.strictEqual(window.AppState.pendingExitChatLogText, '', '新 Room B 入室時に旧 Room A の退避ログが自動クリアされること');
     assert.strictEqual(window.AppState.wasSaveTarget, false, 'wasSaveTarget も自動リセットされること');
