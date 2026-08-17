@@ -26,7 +26,8 @@ const UIManager = {
         if (chatHeadingElement !== null && targetDoc.querySelector(`#${ids.copyButton}`) === null) {
             const copyButton = this.createCopyButton(config, ids, targetDoc);
             if (copyButton) {
-                chatHeadingElement.after(copyButton);
+                // チャットタイトルの親要素の直後に挿入
+                chatHeadingElement.parentElement.after(copyButton);
             }
         }
     },
