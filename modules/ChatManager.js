@@ -15,20 +15,77 @@ const ChatManager = {
         return document;
     },
 
+    // 保存対象のミーティングか判定（div.hsLqkc の存在確認）
+    isSaveTarget(targetDoc, selectors) {
+        if (!targetDoc || !selectors || !selectors.nonSaveTargetIndicator) {
+            return false;
+        }
+        return targetDoc.querySelector(selectors.nonSaveTargetIndicator) !== null;
+    },
+
     // チャット要素を探してクリップボードに保存
-    saveChat(appState, selectors, chatMemberNameElementClassName) {
-        const chatMessage = this.getChatText(appState, selectors, chatMemberNameElementClassName);
-        appState.chatOutputFlag = true;
+    saveChat(appState, selectors, targetDoc, isAutoCopy = true) {
+        const doc = targetDoc || this.getTargetDocument();
+        const chatMessage = this.getChatText(appState, selectors, doc);
         if (chatMessage === '') {
             return;
         }
-        navigator.clipboard.writeText(chatMessage).catch(err => {
-            console.error(chrome.i18n.getMessage('clipboardWriteError'), err);
-        });
+        if (appState) {
+            appState.tmpChatLogText = chatMessage;
+            if (isAutoCopy) {
+                appState.autoCopySucceeded = false;
+                appState.copiedSuccessfully = false;
+            } else {
+                appState.fallbackCopySucceeded = false;
+                appState.autoCopySucceeded = false;
+                appState.copiedSuccessfully = false;
+            }
+            appState.copyInProgress = true;
+        }
+
+        const onComplete = () => {
+            if (appState) {
+                appState.copyInProgress = false;
+            }
+            if (isAutoCopy && typeof window !== 'undefined' && typeof window.checkAndCreateExitedUI === 'function') {
+                window.checkAndCreateExitedUI();
+            }
+        };
+
+        if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            try {
+                return navigator.clipboard.writeText(chatMessage).then(() => {
+                    if (appState) {
+                        if (isAutoCopy) {
+                            appState.autoCopySucceeded = true;
+                            appState.copiedSuccessfully = true;
+                        } else {
+                            appState.fallbackCopySucceeded = true;
+                        }
+                    }
+                    onComplete();
+                }).catch(err => {
+                    const errMsg = typeof chrome !== 'undefined' && chrome.i18n ? chrome.i18n.getMessage('clipboardWriteError') : 'Clipboard write error';
+                    console.error(errMsg, err);
+                    this._execCommandClipboard(chatMessage, appState, isAutoCopy);
+                    onComplete();
+                });
+            } catch (syncErr) {
+                const errMsg = typeof chrome !== 'undefined' && chrome.i18n ? chrome.i18n.getMessage('clipboardWriteError') : 'Clipboard write error';
+                console.error(errMsg, syncErr);
+                this._execCommandClipboard(chatMessage, appState, isAutoCopy);
+                onComplete();
+                return Promise.resolve();
+            }
+        } else {
+            this._execCommandClipboard(chatMessage, appState, isAutoCopy);
+            onComplete();
+            return Promise.resolve();
+        }
     },
 
     // execCommandを使用したクリップボード書き込みヘルパー関数
-    _execCommandClipboard(chatMessage, appState) {
+    _execCommandClipboard(chatMessage, appState, isAutoCopy = true) {
         try {
             const textArea = document.createElement('textarea');
             textArea.value = chatMessage;
@@ -40,14 +97,29 @@ const ChatManager = {
             textArea.select();
             
             if (document.execCommand('copy')) {
-                appState.chatOutputFlag = true;
+                if (appState) {
+                    if (isAutoCopy) {
+                        appState.autoCopySucceeded = true;
+                        appState.copiedSuccessfully = true;
+                    } else {
+                        appState.fallbackCopySucceeded = true;
+                    }
+                }
                 return true;
             } else {
                 throw new Error('execCommand failed');
             }
         } catch (execErr) {
             // 最終的にtmpChatLogTextに保存
-            appState.tmpChatLogText = chatMessage;
+            if (appState) {
+                appState.tmpChatLogText = chatMessage;
+                if (isAutoCopy) {
+                    appState.autoCopySucceeded = false;
+                    appState.copiedSuccessfully = false;
+                } else {
+                    appState.fallbackCopySucceeded = false;
+                }
+            }
             return false;
         } finally {
             // textAreaの後始末
@@ -59,11 +131,16 @@ const ChatManager = {
     },
 
     // PinP環境専用のsaveChat（明示的にPinPウィンドウのdocumentを使用）
-    saveChatFromPinP(appState, selectors, chatMemberNameElementClassName, pinpDocument) {
-        const chatMessage = this.getChatTextFromPinP(appState, selectors, chatMemberNameElementClassName, pinpDocument);
-        appState.chatOutputFlag = true;
+    saveChatFromPinP(appState, selectors, pinpDocument) {
+        const chatMessage = this.getChatTextFromPinP(appState, selectors, pinpDocument);
         if (chatMessage === '') {
             return;
+        }
+        if (appState) {
+            appState.tmpChatLogText = chatMessage;
+            appState.autoCopySucceeded = false;
+            appState.copiedSuccessfully = false;
+            appState.copyInProgress = true;
         }
         
         // メインウィンドウにフォーカスを移す
@@ -72,87 +149,158 @@ const ChatManager = {
             document.body.focus();
         }
         
+        const onComplete = () => {
+            if (appState) {
+                appState.copyInProgress = false;
+            }
+            if (typeof window !== 'undefined' && typeof window.checkAndCreateExitedUI === 'function') {
+                window.checkAndCreateExitedUI();
+            }
+        };
+
         // フォーカス移動後に少し待ってからクリップボード書き込み
         setTimeout(() => {
-            navigator.clipboard.writeText(chatMessage).then(() => {
-                appState.chatOutputFlag = true;
-            }).catch(err => {
-                // フォールバック: execCommandを試行
-                this._execCommandClipboard(chatMessage, appState);
-            });
+            if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                try {
+                    navigator.clipboard.writeText(chatMessage).then(() => {
+                        if (appState) {
+                            appState.autoCopySucceeded = true;
+                            appState.copiedSuccessfully = true;
+                        }
+                        onComplete();
+                    }).catch(err => {
+                        // フォールバック: execCommandを試行
+                        const errMsg = typeof chrome !== 'undefined' && chrome.i18n ? chrome.i18n.getMessage('clipboardWriteError') : 'Clipboard write error';
+                        console.error(errMsg, err);
+                        this._execCommandClipboard(chatMessage, appState, true);
+                        onComplete();
+                    });
+                } catch (syncErr) {
+                    const errMsg = typeof chrome !== 'undefined' && chrome.i18n ? chrome.i18n.getMessage('clipboardWriteError') : 'Clipboard write error';
+                    console.error(errMsg, syncErr);
+                    this._execCommandClipboard(chatMessage, appState, true);
+                    onComplete();
+                }
+            } else {
+                this._execCommandClipboard(chatMessage, appState, true);
+                onComplete();
+            }
         }, 100); // 100ms待機
     },
 
     // PinP環境でのコピーボタン専用（フォーカス移動なし）
-    saveChatFromPinPCopy(appState, selectors, chatMemberNameElementClassName, pinpDocument) {
-        const chatMessage = this.getChatTextFromPinP(appState, selectors, chatMemberNameElementClassName, pinpDocument);
-        appState.chatOutputFlag = true;
+    saveChatFromPinPCopy(appState, selectors, pinpDocument) {
+        const chatMessage = this.getChatTextFromPinP(appState, selectors, pinpDocument);
         if (chatMessage === '') {
             return;
         }
+        if (appState) {
+            appState.tmpChatLogText = chatMessage;
+            appState.autoCopySucceeded = false;
+            appState.copiedSuccessfully = false;
+            appState.copyInProgress = true;
+        }
         
-        // フォーカス移動せずにexecCommandを直接使用
-        this._execCommandClipboard(chatMessage, appState);
+        try {
+            // フォーカス移動せずにexecCommandを直接使用
+            this._execCommandClipboard(chatMessage, appState, false);
+        } finally {
+            if (appState) {
+                appState.copyInProgress = false;
+            }
+            if (typeof window !== 'undefined' && typeof window.checkAndCreateExitedUI === 'function') {
+                window.checkAndCreateExitedUI();
+            }
+        }
     },
 
     // 一時保存されたチャットログをクリップボードに保存
-    saveChatLog(appState) {
-        if (appState.tmpChatLogText === '') return;
-        navigator.clipboard.writeText(appState.tmpChatLogText);
+    saveChatLog(appState, textOverride) {
+        const textToSave = textOverride !== undefined ? textOverride : (appState ? (appState.pendingExitChatLogText || appState.tmpChatLogText) : '');
+        if (!textToSave) return;
+
+        if (appState) {
+            appState.fallbackCopySucceeded = false;
+        }
+
+        if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            try {
+                return navigator.clipboard.writeText(textToSave).then(() => {
+                    if (appState) {
+                        appState.fallbackCopySucceeded = true;
+                    }
+                }).catch(err => {
+                    const errMsg = typeof chrome !== 'undefined' && chrome.i18n ? chrome.i18n.getMessage('clipboardWriteError') : 'Clipboard write error';
+                    console.error(errMsg, err);
+                    this._execCommandClipboard(textToSave, appState, false /* isAutoCopy */);
+                });
+            } catch (syncErr) {
+                const errMsg = typeof chrome !== 'undefined' && chrome.i18n ? chrome.i18n.getMessage('clipboardWriteError') : 'Clipboard write error';
+                console.error(errMsg, syncErr);
+                this._execCommandClipboard(textToSave, appState, false /* isAutoCopy */);
+                return Promise.resolve();
+            }
+        } else {
+            this._execCommandClipboard(textToSave, appState, false /* isAutoCopy */);
+            return Promise.resolve();
+        }
     },
 
-    // チャットテキストを取得
-    getChatText(appState, selectors, chatMemberNameElementClassName) {
-        // 適切なdocumentを取得
-        const targetDoc = this.getTargetDocument();
+    // チャットテキストを取得（メッセージブロック単位での解析）
+    getChatText(appState, selectors, targetDoc) {
+        const doc = targetDoc || this.getTargetDocument();
         
-        // 全体のセレクター
-        this.getSelfLabel(appState, selectors, targetDoc);
-        const allElements = targetDoc.querySelectorAll(selectors.chatMessage);
-        
-        const chatMessages = [...allElements].map(el => {
-            if (this.isSelfNameAndLabelReady(appState) && 
-                el.classList.contains(chatMemberNameElementClassName) && 
-                el.innerText.toString() === appState.selfNameLabel) {
-                return appState.selfName;
+        if (!doc || !this.isSaveTarget(doc, selectors)) {
+            return '';
+        }
+
+        const container = doc.querySelector(selectors.chatContainer);
+        if (!container) return '';
+
+        const messageBlocks = container.querySelectorAll(selectors.chatMessage);
+        const chatMessages = [];
+
+        messageBlocks.forEach(block => {
+            const textElements = block.querySelectorAll(selectors.messageText);
+            if (!textElements || textElements.length === 0) return;
+
+            const timeEl = block.querySelector(selectors.messageTime);
+            const senderEl = block.querySelector(selectors.messageSender);
+
+            const getTextContent = (el) => {
+                if (!el) return '';
+                const value = typeof el.innerText === 'string' ? el.innerText : el.textContent;
+                return (value || '').trim();
+            };
+
+            // 発信者表示がない場合は自分発言とし、selfName が無ければ名前表示を行わない
+            const sender = senderEl ? getTextContent(senderEl) : (appState ? (appState.selfName || '') : '');
+            const time = getTextContent(timeEl);
+
+            const blockLines = [];
+            if (sender) blockLines.push(sender);
+            if (time) blockLines.push(time);
+
+            let hasValidText = false;
+            textElements.forEach(textEl => {
+                const text = getTextContent(textEl);
+                if (text) {
+                    blockLines.push(text);
+                    hasValidText = true;
+                }
+            });
+
+            if (hasValidText && blockLines.length > 0) {
+                chatMessages.push(blockLines.join('\n'));
             }
-            return el.innerText;
         });
+
         return chatMessages.length ? chatMessages.join('\n') : '';
     },
 
     // PinP環境専用のgetChatText（明示的にPinPウィンドウのdocumentを使用）
-    getChatTextFromPinP(appState, selectors, chatMemberNameElementClassName, pinpDocument) {
-        // 全体のセレクター
-        this.getSelfLabelFromPinP(appState, selectors, pinpDocument);
-        const allElements = pinpDocument.querySelectorAll(selectors.chatMessage);
-        
-        const chatMessages = [...allElements].map(el => {
-            if (this.isSelfNameAndLabelReady(appState) && 
-                el.classList.contains(chatMemberNameElementClassName) && 
-                el.innerText.toString() === appState.selfNameLabel) {
-                return appState.selfName;
-            }
-            return el.innerText;
-        });
-        return chatMessages.length ? chatMessages.join('\n') : '';
-    },
-
-    // 自分の名前と自分の名前として表示されるラベルを取得する
-    getSelfLabel(appState, selectors, targetDoc = null) {
-        const doc = targetDoc || this.getTargetDocument();
-        const selfNameElement = doc.querySelector(selectors.selfNameElement);
-        if (selfNameElement) {
-            appState.selfNameLabel = selfNameElement.textContent;
-        }
-    },
-
-    // PinP環境専用のgetSelfLabel
-    getSelfLabelFromPinP(appState, selectors, pinpDocument) {
-        const selfNameElement = pinpDocument.querySelector(selectors.selfNameElement);
-        if (selfNameElement) {
-            appState.selfNameLabel = selfNameElement.textContent;
-        }
+    getChatTextFromPinP(appState, selectors, pinpDocument) {
+        return this.getChatText(appState, selectors, pinpDocument);
     },
 
     // チャットメンバー名を取得
@@ -162,11 +310,6 @@ const ChatManager = {
         if (chatMemberNameElement && chatMemberNameElement.getAttribute('title')) {
             appState.selfName = chatMemberNameElement.getAttribute('title');
         }
-    },
-
-    // 自分の名前とラベルが保存されているかを確認する
-    isSelfNameAndLabelReady(appState) {
-        return appState.selfName !== '' && appState.selfNameLabel !== '';
     }
 };
 
