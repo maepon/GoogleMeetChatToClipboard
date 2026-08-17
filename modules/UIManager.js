@@ -90,7 +90,20 @@ const UIManager = {
         textarea.style.height = config.STYLES.TEXTAREA.height;
         textarea.value = chatLogText;
         const copyButton = targetDoc.createElement('button');
-        copyButton.textContent = chrome.i18n.getMessage('copyButtonText');
+        let copyButtonText = 'コピー';
+
+        try {
+            if (typeof chrome !== 'undefined' && chrome.i18n && typeof chrome.i18n.getMessage === 'function') {
+                const msg = chrome.i18n.getMessage('copyButtonText');
+                if (msg) {
+                    copyButtonText = msg;
+                }
+            }
+        } catch (error) {
+            // 拡張機能コンテキスト無効化等の異常系ではフォールバック文言を使用（例外を外へ漏らさない）
+        }
+
+        copyButton.textContent = copyButtonText;
         copyButton.type = 'button';
         copyButton.addEventListener('click', () => {
             if (typeof saveChatLogCallback === 'function') {

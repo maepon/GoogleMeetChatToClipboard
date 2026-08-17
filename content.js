@@ -54,6 +54,7 @@ const AppState = {
     tmpChatLogText: '',
     pendingExitChatLogText: '',
     pendingExitRoomId: null,
+    exitButtonClicked: false,
     postExitCompleted: false,
     exitedUIInserted: false,
     autoCopySucceeded: false,
@@ -70,7 +71,9 @@ const AppState = {
 
 function clearExitPendingState() {
     AppState.pendingExitChatLogText = '';
+    AppState.tmpChatLogText = '';
     AppState.pendingExitRoomId = null;
+    AppState.exitButtonClicked = false;
     AppState.wasSaveTarget = false;
     AppState.exitedUIInserted = false;
     AppState.postExitCompleted = false;
@@ -239,7 +242,8 @@ function checkAndCreateExitedUI() {
     if (document.querySelector(`#${IDS.chatLogTextArea}`)) {
         return;
     }
-    if (!AppState.pendingExitChatLogText) {
+    const logTextToDisplay = AppState.pendingExitChatLogText || AppState.tmpChatLogText;
+    if (!logTextToDisplay) {
         return;
     }
 
@@ -247,13 +251,13 @@ function checkAndCreateExitedUI() {
         if (removeMessageElement.hasAttribute('data-gmctc-processed')) {
             continue;
         }
-        const exitedUI = UIManager.createExitedUI(CONFIG, IDS, AppState.pendingExitChatLogText, saveChatLog, document);
+        const exitedUI = UIManager.createExitedUI(CONFIG, IDS, logTextToDisplay, saveChatLog, document);
         if (exitedUI) {
             removeMessageElement.after(exitedUI);
             removeMessageElement.setAttribute('data-gmctc-processed', 'true');
             AppState.exitedUIInserted = true;
             AppState.postExitCompleted = true;
-            AppState.pendingExitChatLogText = ''; // textarea への出力完了によりメモリログをクリア
+            // リロード競合時の beforeunload 判定のため、ここでは pendingExitChatLogText をクリアせず保持
             break;
         }
     }
@@ -265,7 +269,12 @@ function getChatMemberName() {
     ChatManager.getChatMemberName(AppState, SELECTORS);
 }
 
-DOMUtils.observeAndAttachEvent(SELECTORS.exitButton, 'click', saveChat, true);
+function handleExitButtonClick() {
+    AppState.exitButtonClicked = true;
+    saveChat();
+}
+
+DOMUtils.observeAndAttachEvent(SELECTORS.exitButton, 'click', handleExitButtonClick, true);
 DOMUtils.observeAndAttachEvent(`#${IDS.copyButton}`, 'click', saveChatManual, true);
 
 // 退出済みメッセージを監視するためのObserver
@@ -298,46 +307,42 @@ window.addEventListener('beforeunload', (event) => {
         }
     }
 
-    const hasPendingLog = AppState.pendingExitChatLogText !== '';
+    const effectiveChatLog = AppState.pendingExitChatLogText || AppState.tmpChatLogText;
+    const hasPendingLog = effectiveChatLog !== '';
     const isCurrentRoom = AppState.pendingExitRoomId != null &&
         activeRoomId != null &&
         AppState.pendingExitRoomId === activeRoomId;
 
-    // 3. 通話中判定（退出ボタンが存在する間はアクティブな通話中）
-    const isInActiveCall = document.querySelector(SELECTORS.exitButton) != null;
-
-    // 4. 退出後画面（通話終了後）の判定
-    const isPostMeetingScreen = !isInActiveCall && (
-        AppState.postExitCompleted ||
-        AppState.exitedUIInserted ||
-        document.querySelector(SELECTORS.unprocessedRemovedMessage) != null
-    );
-
-    // 5. 実機切り分け用の一時デバッグログ（本文は出さずフラグ・文字数のみ）
+    // 実機切り分け用の一時デバッグログ（本文は出さずフラグ・文字数のみ）
     console.debug('[GMCTC] beforeunload state', {
         wasSaveTarget: AppState.wasSaveTarget,
         isLiveSaveTarget: ChatManager.isSaveTarget(document, SELECTORS),
         chatTextLength: currentChatText.length,
-        pendingTextLength: AppState.pendingExitChatLogText.length,
+        pendingTextLength: effectiveChatLog.length,
         pendingExitRoomId: AppState.pendingExitRoomId,
         activeRoomId: activeRoomId,
-        isInActiveCall: isInActiveCall,
-        postExitCompleted: AppState.postExitCompleted,
-        isPostMeetingScreen: isPostMeetingScreen,
+        exitButtonClicked: AppState.exitButtonClicked,
+        autoCopySucceeded: AppState.autoCopySucceeded,
+        exitedUIInserted: AppState.exitedUIInserted,
         visibilityState: document.visibilityState
     });
 
-    // 5. 退避ログなし、または Room 不一致の場合は要求しない
+    // 1. 退避ログなし、または Room 不一致の場合は要求しない
     if (!hasPendingLog || !isCurrentRoom) {
         return;
     }
 
-    // 6. 既に退出後画面にいる場合はダイアログを要求しない
-    if (isPostMeetingScreen) {
+    // 2. 自動コピーが成功している場合は要求しない（クリップボード救出完了）
+    if (AppState.autoCopySucceeded) {
         return;
     }
 
-    // 7. 会議中（通話中）の離脱時のみ W3C / ブラウザ標準の確認要求を設定
+    // 3. 退出ボタンによる正常退出フローで textarea が挿入済みの場合は要求しない（通常遷移）
+    if (AppState.exitButtonClicked && AppState.exitedUIInserted) {
+        return;
+    }
+
+    // 4. それ以外（通話中リロード、またはリロード過渡期の先行切断・textarea先行挿入時）はダイアログを要求
     event.preventDefault();
     event.returnValue = '';
 });
@@ -372,6 +377,7 @@ window.addEventListener('message', (event) => {
         if (event.data.eventType === 'click') {
             if (event.data.selector === SELECTORS.exitButton) {
                 // PinP内の退出ボタンがクリックされた場合（フォーカス移動あり）
+                AppState.exitButtonClicked = true;
                 saveChatFromPinP();
             } else if (event.data.selector === `#${IDS.copyButton}`) {
                 // PinP内のコピーボタンがクリックされた場合（フォーカス移動なし）

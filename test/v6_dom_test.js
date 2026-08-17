@@ -1091,7 +1091,7 @@ await runTest('beforeunload (8): pendingExitRoomId が null の場合はキャ�
 // Phase 2: 退出後画面および遷移時における beforeunload 抑止テスト
 // ----------------------------------------------------
 
-await runTest('Phase 2 (1): 会議中コピー負のテスト - autoCopySucceeded === true 単独でも会議中ダイアログ要求が維持されること', async () => {
+await runTest('Phase 2 (1): autoCopySucceeded === true による救出完了時は beforeunload ダイアログ要求が抑止されること', async () => {
     const { window } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
 
     window.AppState.wasSaveTarget = true;
@@ -1105,7 +1105,7 @@ await runTest('Phase 2 (1): 会議中コピー負のテスト - autoCopySucceede
     const event = new window.Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
 
-    assert.strictEqual(event.defaultPrevented, true, 'autoCopySucceeded 単独でも会議中離脱時は defaultPrevented が true であること');
+    assert.strictEqual(event.defaultPrevented, false, 'autoCopySucceeded === true 時はクリップボード救出完了のため defaultPrevented が false であること');
 });
 
 await runTest('Phase 2 (2): 会議中コピー負のテスト - copiedSuccessfully === true 単独でも会議中ダイアログ要求が維持されること', async () => {
@@ -1125,7 +1125,7 @@ await runTest('Phase 2 (2): 会議中コピー負のテスト - copiedSuccessful
     assert.strictEqual(event.defaultPrevented, true, 'copiedSuccessfully 単独でも会議中離脱時は defaultPrevented が true であること');
 });
 
-await runTest('Phase 2 (3): 会議中コピー負のテスト - 両フラグ true でも会議中ダイアログ要求が維持されること', async () => {
+await runTest('Phase 2 (3): autoCopySucceeded === true と copiedSuccessfully === true の併用時もダイアログが抑止されること', async () => {
     const { window } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
 
     window.AppState.wasSaveTarget = true;
@@ -1139,7 +1139,7 @@ await runTest('Phase 2 (3): 会議中コピー負のテスト - 両フラグ tru
     const event = new window.Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
 
-    assert.strictEqual(event.defaultPrevented, true, '両フラグ true でも会議中離脱時は defaultPrevented が true であること');
+    assert.strictEqual(event.defaultPrevented, false, 'autoCopySucceeded === true であればダイアログが抑止されること');
 });
 
 await runTest('Phase 2 (4): キャンセル後再リロード - 同一会議室内での 2 回目の beforeunload でも要求が維持されること', async () => {
@@ -1187,7 +1187,7 @@ await runTest('Phase 2 (5): 正常退出後 - checkAndCreateExitedUI で自動�
     assert.strictEqual(event.defaultPrevented, false, '正常退出後は beforeunload ダイアログが抑止されること');
 });
 
-await runTest('Phase 2 (6): 未処理退出要素 - DOM 内に unprocessedRemovedMessage が存在する場合にダイアログ要求が抑止されること', async () => {
+await runTest('Phase 2 (6): リロード過渡期の未処理退出要素存在時 - exitButtonClicked === false であればダイアログ要求されること', async () => {
     const unprocessedHtml = `
         <html><body>
             <div class="lAqQo"><h1 class="roSPhc" jsname="r4nke">通話から退出しました</h1></div>
@@ -1198,19 +1198,21 @@ await runTest('Phase 2 (6): 未処理退出要素 - DOM 内に unprocessedRemove
     window.AppState.wasSaveTarget = true;
     window.AppState.pendingExitChatLogText = '退避ログ';
     window.AppState.pendingExitRoomId = 'abc-defg-hij';
+    window.AppState.exitButtonClicked = false;
     window.AppState.postExitCompleted = false;
     window.AppState.exitedUIInserted = false;
 
     const event = new window.Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
 
-    assert.strictEqual(event.defaultPrevented, false, '未処理退出要素存在時は defaultPrevented が false であること');
+    assert.strictEqual(event.defaultPrevented, true, 'リロード過渡期は exitButtonClicked === false のため defaultPrevented が true であること');
 });
 
-await runTest('Phase 2 (7): フォールバック挿入経路 - postExitCompleted === true かつ exitedUIInserted === true でダイアログ要求が抑止されること', async () => {
+await runTest('Phase 2 (7): 正常退出後遷移 - exitButtonClicked === true かつ exitedUIInserted === true でダイアログ要求が抑止されること', async () => {
     const { window } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
 
     window.AppState.wasSaveTarget = true;
+    window.AppState.exitButtonClicked = true;
     window.AppState.pendingExitChatLogText = '退避ログ';
     window.AppState.pendingExitRoomId = 'abc-defg-hij';
     window.AppState.postExitCompleted = true;
@@ -1219,13 +1221,14 @@ await runTest('Phase 2 (7): フォールバック挿入経路 - postExitComplete
     const event = new window.Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
 
-    assert.strictEqual(event.defaultPrevented, false, 'フォールバック挿入後は defaultPrevented が false であること');
+    assert.strictEqual(event.defaultPrevented, false, '正常退出後は defaultPrevented が false であること');
 });
 
-await runTest('Phase 2 (8): exitedUIInserted 単独 - postExitCompleted === false でも exitedUIInserted === true でダイアログ要求が抑止されること', async () => {
+await runTest('Phase 2 (8): 退出ボタン押下後の textarea 表示 - exitButtonClicked === true かつ exitedUIInserted === true でダイアログ要求が抑止されること', async () => {
     const { window } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
 
     window.AppState.wasSaveTarget = true;
+    window.AppState.exitButtonClicked = true;
     window.AppState.pendingExitChatLogText = '退避ログ';
     window.AppState.pendingExitRoomId = 'abc-defg-hij';
     window.AppState.postExitCompleted = false;
@@ -1234,7 +1237,7 @@ await runTest('Phase 2 (8): exitedUIInserted 単独 - postExitCompleted === fals
     const event = new window.Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
 
-    assert.strictEqual(event.defaultPrevented, false, 'exitedUIInserted 単独でも defaultPrevented が false であること');
+    assert.strictEqual(event.defaultPrevented, false, '正常退出フローでは defaultPrevented が false であること');
 });
 
 await runTest('Phase 2 (9): 旧 Room 処理済み要素残留時 - 新 Room の会議中ダイアログ要求を誤抑止しないこと', async () => {
@@ -1442,7 +1445,7 @@ await runTest('Phase 3 (1): textarea 挿入とログ消費テスト - textarea �
     const textarea = document.querySelector(`#${IDS.chatLogTextArea}`);
     assert.notStrictEqual(textarea, null, 'textarea が挿入されていること');
     assert.strictEqual(textarea.value, '退避されたチャットメッセージ本文', 'textarea に退避ログの内容が設定されていること');
-    assert.strictEqual(window.AppState.pendingExitChatLogText, '', 'textarea 挿入後に pendingExitChatLogText が空にクリアされること');
+    assert.strictEqual(window.AppState.pendingExitChatLogText, '退避されたチャットメッセージ本文', 'リロード競合に備えて textarea 挿入後も pendingExitChatLogText が保持されること');
     assert.strictEqual(window.AppState.exitedUIInserted, true, 'exitedUIInserted が true であること');
     assert.strictEqual(window.AppState.postExitCompleted, true, 'postExitCompleted が true であること');
 });
@@ -1475,7 +1478,7 @@ await runTest('Phase 3 (2): AppState クリア後の textarea コピーテスト
     assert.strictEqual(window.AppState.fallbackCopySucceeded, true, 'fallbackCopySucceeded が true になること');
 });
 
-await runTest('Phase 3 (3): textarea 表示後の後続遷移抑止テスト - textarea 挿入後は beforeunload ダイアログが抑止されること', async () => {
+await runTest('Phase 3 (3): 正常退出後の通常遷移抑止テスト - 退出ボタン押下後の textarea 表示後は beforeunload ダイアログが抑止されること', async () => {
     const exitDomHtml = `
         <html><body>
             <div class="lAqQo"><h1 class="roSPhc" jsname="r4nke">通話から退出しました</h1></div>
@@ -1484,16 +1487,17 @@ await runTest('Phase 3 (3): textarea 表示後の後続遷移抑止テスト - t
     const { window, document } = createEnvironment(exitDomHtml, 'https://meet.google.com/abc-defg-hij');
 
     window.AppState.wasSaveTarget = true;
+    window.AppState.exitButtonClicked = true; // 明示的な退出ボタンクリック
     window.AppState.pendingExitChatLogText = 'チャットログ';
     window.AppState.pendingExitRoomId = 'abc-defg-hij';
 
     window.checkAndCreateExitedUI();
 
-    // キャンセル復帰後に「ホームに戻る」や「再参加」を押して beforeunload が発火
+    // 正常退出後に「ホームに戻る」や「再参加」を押して beforeunload が発火
     const event = new window.Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
 
-    assert.strictEqual(event.defaultPrevented, false, 'textarea 表示後はログ消費済みのため beforeunload ダイアログが抑止されること');
+    assert.strictEqual(event.defaultPrevented, false, '正常退出フローでは beforeunload ダイアログが抑止されること');
 });
 
 await runTest('Phase 3 (4): 自動コピー成功後のログ消費テスト - autoCopySucceeded 時は pendingExitChatLogText がクリアされ textarea は生成されないこと', async () => {
@@ -1546,6 +1550,267 @@ await runTest('Phase 3 (6): チャット 0 件 (pendingExitChatLogText 空) の�
     window.dispatchEvent(event);
 
     assert.strictEqual(event.defaultPrevented, false, 'チャット 0 件の場合はダイアログが要求されないこと');
+});
+
+// ----------------------------------------------------
+// Phase 4: chrome.i18n 未定義・例外スローに対する包括的防御 & フォールバックテスト
+// ----------------------------------------------------
+await runTest('Phase 4 (1): chrome が undefined の場合 - 例外なく "コピー" でボタンが生成されること', async () => {
+    const { window, document, UIManager } = createEnvironment(enableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    window.chrome = undefined;
+
+    const ui = UIManager.createExitedUI(CONFIG, IDS, 'テストログ', () => {}, document);
+    assert.notStrictEqual(ui, null, 'UI 要素が生成されること');
+    const button = ui.querySelector('button');
+    assert.notStrictEqual(button, null, 'ボタンが生成されること');
+    assert.strictEqual(button.textContent, 'コピー', 'ボタン文言がフォールバック "コピー" であること');
+});
+
+await runTest('Phase 4 (2): chrome.i18n が undefined の場合 - 例外なく "コピー" でボタンが生成されること', async () => {
+    const { window, document, UIManager } = createEnvironment(enableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    window.chrome = {};
+
+    const ui = UIManager.createExitedUI(CONFIG, IDS, 'テストログ', () => {}, document);
+    assert.notStrictEqual(ui, null, 'UI 要素が生成されること');
+    const button = ui.querySelector('button');
+    assert.notStrictEqual(button, null, 'ボタンが生成されること');
+    assert.strictEqual(button.textContent, 'コピー', 'ボタン文言がフォールバック "コピー" であること');
+});
+
+await runTest('Phase 4 (3): getMessage が関数でない場合 - 例外なく "コピー" でボタンが生成されること', async () => {
+    const { window, document, UIManager } = createEnvironment(enableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    window.chrome = { i18n: {} };
+
+    const ui = UIManager.createExitedUI(CONFIG, IDS, 'テストログ', () => {}, document);
+    assert.notStrictEqual(ui, null, 'UI 要素が生成されること');
+    const button = ui.querySelector('button');
+    assert.notStrictEqual(button, null, 'ボタンが生成されること');
+    assert.strictEqual(button.textContent, 'コピー', 'ボタン文言がフォールバック "コピー" であること');
+});
+
+await runTest('Phase 4 (4): getMessage() が空文字列を返す場合 - フォールバック "コピー" でボタンが生成されること', async () => {
+    const { window, document, UIManager } = createEnvironment(enableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    window.chrome = {
+        i18n: {
+            getMessage: () => ''
+        }
+    };
+
+    const ui = UIManager.createExitedUI(CONFIG, IDS, 'テストログ', () => {}, document);
+    assert.notStrictEqual(ui, null, 'UI 要素が生成されること');
+    const button = ui.querySelector('button');
+    assert.notStrictEqual(button, null, 'ボタンが生成されること');
+    assert.strictEqual(button.textContent, 'コピー', '空文字戻り値時にフォールバック "コピー" が設定されること');
+});
+
+await runTest('Phase 4 (5): getMessage() が例外をスローする場合 - 例外を捕捉し "コピー" でボタンが生成されること', async () => {
+    const { window, document, UIManager } = createEnvironment(enableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    window.chrome = {
+        i18n: {
+            getMessage: () => {
+                throw new Error('Extension context invalidated.');
+            }
+        }
+    };
+
+    const ui = UIManager.createExitedUI(CONFIG, IDS, 'テストログ', () => {}, document);
+    assert.notStrictEqual(ui, null, '例外がスローされず UI 要素が生成されること');
+    const button = ui.querySelector('button');
+    assert.notStrictEqual(button, null, 'ボタンが生成されること');
+    assert.strictEqual(button.textContent, 'コピー', '例外発生時にフォールバック "コピー" が設定されること');
+});
+
+await runTest('Phase 4 (6): 正常な i18n API が利用可能な場合 - 取得文言でボタンが生成されること', async () => {
+    const { window, document, UIManager } = createEnvironment(enableDomHtml, 'https://meet.google.com/abc-defg-hij');
+    window.chrome = {
+        i18n: {
+            getMessage: (key) => key === 'copyButtonText' ? 'カスタムコピー' : ''
+        }
+    };
+
+    const ui = UIManager.createExitedUI(CONFIG, IDS, 'テストログ', () => {}, document);
+    assert.notStrictEqual(ui, null, 'UI 要素が生成されること');
+    const button = ui.querySelector('button');
+    assert.notStrictEqual(button, null, 'ボタンが生成されること');
+    assert.strictEqual(button.textContent, 'カスタムコピー', 'i18n から取得した文言が設定されること');
+});
+
+await runTest('Phase 4 (7): 退出後 UI の実経路結合テスト (chrome.i18n 未定義時) - checkAndCreateExitedUI が中断せず UI を生成し data-gmctc-processed を付与すること', async () => {
+    const exitDomHtml = `
+        <html><body>
+            <div class="lAqQo"><h1 class="roSPhc" jsname="r4nke">通話から退出しました</h1></div>
+        </body></html>
+    `;
+    const { window, document } = createEnvironment(exitDomHtml, 'https://meet.google.com/abc-defg-hij');
+    // 拡張機能コンテキスト無効化をシミュレーション
+    window.chrome.i18n = undefined;
+
+    window.AppState.wasSaveTarget = true;
+    window.AppState.pendingExitChatLogText = '実経路チャットログ';
+    window.AppState.pendingExitRoomId = 'abc-defg-hij';
+
+    window.checkAndCreateExitedUI();
+
+    const textarea = document.querySelector(`#${IDS.chatLogTextArea}`);
+    assert.notStrictEqual(textarea, null, 'textarea が挿入されていること');
+    assert.strictEqual(textarea.value, '実経路チャットログ', 'textarea に退避ログの内容が設定されていること');
+
+    const copyBtn = document.querySelector('.lAqQo p button');
+    assert.notStrictEqual(copyBtn, null, 'コピーボタンが挿入されていること');
+    assert.strictEqual(copyBtn.textContent, 'コピー', '未定義環境下でフォールバック文言 "コピー" が設定されていること');
+
+    const removedMessageEl = document.querySelector(SELECTORS.removedMessage);
+    assert.strictEqual(removedMessageEl.getAttribute('data-gmctc-processed'), 'true', '退出要素に data-gmctc-processed 属性が付与されること');
+
+    assert.strictEqual(window.AppState.pendingExitChatLogText, '実経路チャットログ', '実経路で textarea 挿入後も pendingExitChatLogText が保持されること');
+    assert.strictEqual(window.AppState.postExitCompleted, true, 'postExitCompleted が true であること');
+    assert.strictEqual(window.AppState.exitedUIInserted, true, 'exitedUIInserted が true であること');
+});
+
+// ----------------------------------------------------
+// Phase 5: リロード時レースコンディション（ログ先行クリア・早期抑止）解消テスト
+// ----------------------------------------------------
+await runTest('Phase 5 (1): リロード競合時（textarea 先行挿入・ボタン未押下）- ダイアログが要求されること', async () => {
+    const exitDomHtml = `
+        <html><body>
+            <div class="lAqQo"><h1 class="roSPhc" jsname="r4nke">通話から退出しました</h1></div>
+        </body></html>
+    `;
+    const { window, document } = createEnvironment(exitDomHtml, 'https://meet.google.com/abc-defg-hij');
+
+    window.AppState.wasSaveTarget = true;
+    window.AppState.exitButtonClicked = false; // リロード開始（退出ボタンは押していない）
+    window.AppState.pendingExitChatLogText = '重要メッセージ';
+    window.AppState.pendingExitRoomId = 'abc-defg-hij';
+
+    // Meet の切断処理が先行して checkAndCreateExitedUI が発火
+    window.checkAndCreateExitedUI();
+    assert.strictEqual(window.AppState.exitedUIInserted, true, 'textarea が挿入されていること');
+
+    // その直後に beforeunload が発火
+    const event = new window.Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    assert.strictEqual(event.defaultPrevented, true, 'リロード競合時でもダイアログ要求されること');
+});
+
+await runTest('Phase 5 (2): 正常退出後遷移（退出ボタン押下・textarea 表示）- ダイアログが抑止されること', async () => {
+    const exitDomHtml = `
+        <html><body>
+            <div class="lAqQo"><h1 class="roSPhc" jsname="r4nke">通話から退出しました</h1></div>
+        </body></html>
+    `;
+    const { window, document } = createEnvironment(exitDomHtml, 'https://meet.google.com/abc-defg-hij');
+
+    window.AppState.wasSaveTarget = true;
+    window.AppState.exitButtonClicked = true; // 明示的な退出ボタンクリック
+    window.AppState.pendingExitChatLogText = 'チャットログ';
+    window.AppState.pendingExitRoomId = 'abc-defg-hij';
+
+    window.checkAndCreateExitedUI();
+    assert.strictEqual(window.AppState.exitedUIInserted, true, 'textarea が挿入されていること');
+
+    // 正常退出後に「ホームに戻る」等で beforeunload が発火
+    const event = new window.Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    assert.strictEqual(event.defaultPrevented, false, '正常退出フローではダイアログが抑止されること');
+});
+
+await runTest('Phase 5 (3): 自動コピー成功後遷移 - ダイアログが抑止されること', async () => {
+    const exitDomHtml = `
+        <html><body>
+            <div class="lAqQo"><h1 class="roSPhc" jsname="r4nke">通話から退出しました</h1></div>
+        </body></html>
+    `;
+    const { window, document } = createEnvironment(exitDomHtml, 'https://meet.google.com/abc-defg-hij');
+
+    window.AppState.wasSaveTarget = true;
+    window.AppState.autoCopySucceeded = true; // クリップボード救出完了
+    window.AppState.pendingExitChatLogText = '';
+    window.AppState.pendingExitRoomId = 'abc-defg-hij';
+
+    const event = new window.Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    assert.strictEqual(event.defaultPrevented, false, '自動コピー成功後はダイアログが抑止されること');
+});
+
+await runTest('Phase 5 (4): textarea 先行挿入時のログ保持テスト - checkAndCreateExitedUI 実行後もログが保持されること', async () => {
+    const exitDomHtml = `
+        <html><body>
+            <div class="lAqQo"><h1 class="roSPhc" jsname="r4nke">通話から退出しました</h1></div>
+        </body></html>
+    `;
+    const { window, document } = createEnvironment(exitDomHtml, 'https://meet.google.com/abc-defg-hij');
+
+    window.AppState.wasSaveTarget = true;
+    window.AppState.pendingExitChatLogText = '保持されるべきログ';
+    window.AppState.pendingExitRoomId = 'abc-defg-hij';
+
+    window.checkAndCreateExitedUI();
+
+    assert.strictEqual(window.AppState.pendingExitChatLogText, '保持されるべきログ', 'textarea 挿入後もメモリログが保持されていること');
+});
+
+await runTest('Phase 5 (5): 両ログ空の場合はダイアログが抑止されること', async () => {
+    const { window, document } = createEnvironment(enableDomHtml, 'https://meet.google.com/abc-defg-hij');
+
+    window.AppState.pendingExitChatLogText = '';
+    window.AppState.tmpChatLogText = '';
+    window.AppState.pendingExitRoomId = 'abc-defg-hij';
+
+    const event = new window.Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    assert.strictEqual(event.defaultPrevented, false, '両ログが空の場合はダイアログが抑止されること');
+});
+
+await runTest('Phase 5 (6): 別 Room 入室時に旧 Room の状態が初期化され旧ログによるダイアログ誤判定が抑止されること', async () => {
+    const { window, document } = createEnvironment(enableDomHtml, 'https://meet.google.com/abc-defg-hij');
+
+    window.AppState.pendingExitChatLogText = '旧Roomログ';
+    window.AppState.tmpChatLogText = '旧Roomログ';
+    window.AppState.pendingExitRoomId = 'abc-defg-hij';
+    window.AppState.exitButtonClicked = true;
+
+    // 新しい Room B (xyz-uvwx-rst) へ入室
+    window.checkRoomChangeAndReset('xyz-uvwx-rst');
+
+    assert.strictEqual(window.AppState.pendingExitChatLogText, '', 'pendingExitChatLogText がリセットされること');
+    assert.strictEqual(window.AppState.tmpChatLogText, '', 'tmpChatLogText がリセットされること');
+    assert.strictEqual(window.AppState.pendingExitRoomId, null, 'pendingExitRoomId が null にリセットされること');
+    assert.strictEqual(window.AppState.exitButtonClicked, false, 'exitButtonClicked が false にリセットされること');
+
+    const event = new window.Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    assert.strictEqual(event.defaultPrevented, false, 'リセット後はダイアログが抑止されること');
+});
+
+await runTest('Phase 5 (7): 同一 Room 再参加時のフラグ分離 - 再参加後の新セッション通話中リロードでダイアログが要求されること', async () => {
+    const { window, document } = createEnvironment(disableDomHtml, 'https://meet.google.com/abc-defg-hij');
+
+    // 1回目の通話で退出ボタンをクリック
+    window.AppState.exitButtonClicked = true;
+    window.AppState.exitedUIInserted = true;
+
+    // 一旦 /landing へ遷移
+    window.checkRoomChangeAndReset(null);
+
+    // 再び同一 Room へ /landing 経由で新規再入室（previousRoomId === null ➔ clearExitPendingState 発火）
+    window.checkRoomChangeAndReset('abc-defg-hij');
+    assert.strictEqual(window.AppState.exitButtonClicked, false, '再入室で exitButtonClicked が false にリセットされること');
+
+    window.AppState.wasSaveTarget = true;
+    window.AppState.pendingExitRoomId = 'abc-defg-hij';
+    window.AppState.pendingExitChatLogText = '新セッションログ';
+
+    // 新セッションで通話中リロード（退出ボタンは押していない）
+    const event = new window.Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    assert.strictEqual(event.defaultPrevented, true, '同一 Room 再参加後は旧フラグが引き継がれず新セッションでダイアログ要求されること');
 });
 
 // 全 JSDOM インスタンスを閉じてタイマー (setInterval 等) を解放し、テストプロセスが自然終了できるようにする

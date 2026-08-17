@@ -67,3 +67,7 @@ Google Meet の新しい画面構成に合わせて、`content.js` / `ChatManage
 - [コピー制御・非同期競合防止 改修完了報告書](./review_fix_completion_report.md): コピー状態管理の個別改修記録。
 - [退避ログ駆動型 beforeunload 再設計 実装計画書](./log_driven_beforeunload_redesign_plan.md): 退避ログ基準のダイアログ判定・ライフサイクル再設計計画。
 - [退避ログ駆動型 beforeunload 再設計 改修完了報告書](./log_driven_beforeunload_redesign_completion_report.md): 退避ログ駆動型判定・textarea 直接コピー実装の完了報告。
+- [chrome.i18n 例外防御 修正計画書](./fix_chrome_i18n_undefined_error_plan.md): UIManager における i18n API 呼び出しの包括的例外防御・フォールバック計画。
+- [chrome.i18n 例外防御 改修完了報告書](./fix_chrome_i18n_undefined_error_completion_report.md): i18n 例外防御・フォールバック実装の完了報告。
+- [リロード時レースコンディション解消 再設計計画書](./fix_reload_race_condition_plan.md): リロード競合時のログ先行クリア・早期抑止解消のための再設計計画。
+- [リロード時レースコンディション解消 完了報告書](./fix_reload_race_condition_completion_report.md): リロード競合解消、状態分離、ダイアログ確実化の実装完了報告。
