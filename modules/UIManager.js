@@ -89,11 +89,14 @@ const UIManager = {
         textarea.style.width = config.STYLES.TEXTAREA.width;
         textarea.style.height = config.STYLES.TEXTAREA.height;
         textarea.value = chatLogText;
-        
         const copyButton = targetDoc.createElement('button');
         copyButton.textContent = chrome.i18n.getMessage('copyButtonText');
         copyButton.type = 'button';
-        copyButton.addEventListener('click', saveChatLogCallback);
+        copyButton.addEventListener('click', () => {
+            if (typeof saveChatLogCallback === 'function') {
+                saveChatLogCallback(textarea.value);
+            }
+        });
         
         const pElement = targetDoc.createElement('p');
         pElement.append(copyButton);

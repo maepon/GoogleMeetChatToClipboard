@@ -54,7 +54,12 @@ const AppState = {
     tmpChatLogText: '',
     pendingExitChatLogText: '',
     pendingExitRoomId: null,
+    postExitCompleted: false,
     exitedUIInserted: false,
+    autoCopySucceeded: false,
+    fallbackCopySucceeded: false,
+    copyInProgress: false,
+    copiedSuccessfully: false,
     wasSaveTarget: false,
     selfName: '',
     currentRoomId: getRoomId(),
@@ -68,6 +73,11 @@ function clearExitPendingState() {
     AppState.pendingExitRoomId = null;
     AppState.wasSaveTarget = false;
     AppState.exitedUIInserted = false;
+    AppState.postExitCompleted = false;
+    AppState.autoCopySucceeded = false;
+    AppState.fallbackCopySucceeded = false;
+    AppState.copyInProgress = false;
+    AppState.copiedSuccessfully = false;
 }
 
 function disableOldRemovedMessageElements(previousRoomId) {
@@ -100,24 +110,31 @@ function checkRoomChangeAndReset(overrideRoomId = undefined) {
             resetAppState(previousRoomId);
         }
 
-        if (newRoomId !== null && newRoomId !== AppState.pendingExitRoomId) {
+        // 別 Room への移動、または /landing からの入室（新規会議セッション）時に退出待機状態を完全リセット
+        if (newRoomId !== null && (previousRoomId === null || newRoomId !== AppState.pendingExitRoomId)) {
             clearExitPendingState();
         }
     }
 }
 
 function updateLogBackup(targetDoc = document) {
-    if (ChatManager.isSaveTarget(targetDoc, SELECTORS)) {
-        AppState.wasSaveTarget = true;
-        const roomId = getRoomId() || AppState.currentRoomId;
-        if (roomId) {
-            AppState.pendingExitRoomId = roomId;
-        }
-        const currentText = ChatManager.getChatText(AppState, SELECTORS, targetDoc);
-        if (currentText !== '') {
-            AppState.tmpChatLogText = currentText;
-            AppState.pendingExitChatLogText = currentText;
-        }
+    checkRoomChangeAndReset();
+    if (!ChatManager.isSaveTarget(targetDoc, SELECTORS)) {
+        return;
+    }
+
+    const roomId = getRoomId();
+    if (roomId == null ||
+        (AppState.pendingExitRoomId != null && AppState.pendingExitRoomId !== roomId)) {
+        return;
+    }
+
+    AppState.wasSaveTarget = true;
+    AppState.pendingExitRoomId = roomId;
+    const currentText = ChatManager.getChatText(AppState, SELECTORS, targetDoc);
+    if (currentText !== '') {
+        AppState.tmpChatLogText = currentText;
+        AppState.pendingExitChatLogText = currentText;
     }
 }
 
@@ -130,20 +147,34 @@ document.addEventListener('keydown', function(event) {
 },true);
 
 
-// チャット要素を探してクリップボードに保存
+// チャット要素を探してクリップボードに保存（退出ボタン・PinP退出用）
 function saveChat() {
     updateLogBackup(document);
     if (!ChatManager.isSaveTarget(document, SELECTORS)) {
         return;
     }
-    ChatManager.saveChat(AppState, SELECTORS, document);
+    const result = ChatManager.saveChat(AppState, SELECTORS, document, true);
     if (AppState.tmpChatLogText !== '') {
         AppState.pendingExitChatLogText = AppState.tmpChatLogText;
     }
+    return result;
 }
 
-function saveChatLog() {
-    ChatManager.saveChatLog(AppState);
+// 会議中コピーボタン専用（autoCopySucceeded を立てずに手動コピー）
+function saveChatManual() {
+    updateLogBackup(document);
+    if (!ChatManager.isSaveTarget(document, SELECTORS)) {
+        return;
+    }
+    const result = ChatManager.saveChat(AppState, SELECTORS, document, false);
+    if (AppState.tmpChatLogText !== '') {
+        AppState.pendingExitChatLogText = AppState.tmpChatLogText;
+    }
+    return result;
+}
+
+function saveChatLog(text) {
+    return ChatManager.saveChatLog(AppState, text);
 }
 
 // PinP環境からのsaveChat実行（メインウィンドウから常にPinP内のデータを参照）
@@ -155,12 +186,13 @@ function saveChatFromPinP() {
         if (!ChatManager.isSaveTarget(pinpDoc, SELECTORS)) {
             return;
         }
-        ChatManager.saveChatFromPinP(AppState, SELECTORS, pinpDoc);
+        const result = ChatManager.saveChatFromPinP(AppState, SELECTORS, pinpDoc);
         if (AppState.tmpChatLogText !== '') {
             AppState.pendingExitChatLogText = AppState.tmpChatLogText;
         }
+        return result;
     } else {
-        saveChat();
+        return saveChat();
     }
 }
 
@@ -173,12 +205,13 @@ function saveChatFromPinPCopy() {
         if (!ChatManager.isSaveTarget(pinpDoc, SELECTORS)) {
             return;
         }
-        ChatManager.saveChatFromPinPCopy(AppState, SELECTORS, pinpDoc);
+        const result = ChatManager.saveChatFromPinPCopy(AppState, SELECTORS, pinpDoc);
         if (AppState.tmpChatLogText !== '') {
             AppState.pendingExitChatLogText = AppState.tmpChatLogText;
         }
+        return result;
     } else {
-        saveChat();
+        return saveChat();
     }
 }
 
@@ -187,8 +220,20 @@ function checkAndCreateExitedUI() {
     if (!AppState.wasSaveTarget) {
         return;
     }
+    if (AppState.copyInProgress) {
+        return;
+    }
     const unprocessedElements = document.querySelectorAll(SELECTORS.unprocessedRemovedMessage);
     if (!unprocessedElements || unprocessedElements.length === 0) {
+        return;
+    }
+    // 退出ボタンまたはPinP退出による自動コピーが成功している場合のみ処理済み化
+    if (AppState.autoCopySucceeded) {
+        unprocessedElements.forEach(el => {
+            el.setAttribute('data-gmctc-processed', 'true');
+        });
+        AppState.postExitCompleted = true;
+        AppState.pendingExitChatLogText = ''; // 自動コピー成功につきログ消費
         return;
     }
     if (document.querySelector(`#${IDS.chatLogTextArea}`)) {
@@ -207,17 +252,21 @@ function checkAndCreateExitedUI() {
             removeMessageElement.after(exitedUI);
             removeMessageElement.setAttribute('data-gmctc-processed', 'true');
             AppState.exitedUIInserted = true;
+            AppState.postExitCompleted = true;
+            AppState.pendingExitChatLogText = ''; // textarea への出力完了によりメモリログをクリア
             break;
         }
     }
 }
+
+window.checkAndCreateExitedUI = checkAndCreateExitedUI;
 
 function getChatMemberName() {
     ChatManager.getChatMemberName(AppState, SELECTORS);
 }
 
 DOMUtils.observeAndAttachEvent(SELECTORS.exitButton, 'click', saveChat, true);
-DOMUtils.observeAndAttachEvent(`#${IDS.copyButton}`, 'click', saveChat, true);
+DOMUtils.observeAndAttachEvent(`#${IDS.copyButton}`, 'click', saveChatManual, true);
 
 // 退出済みメッセージを監視するためのObserver
 const removedMessageObserver = ObserverManager.observeForElement(
@@ -231,17 +280,66 @@ const removedMessageObserver = ObserverManager.observeForElement(
 // 初回直接チェック（スクリプト評価時・すでに DOM が存在する場合の即時実行）
 checkAndCreateExitedUI();
 
-window.addEventListener('beforeunload', (e) => {
+window.addEventListener('beforeunload', (event) => {
+    checkRoomChangeAndReset();
+    // 1. ハンドラー冒頭で無条件に退避処理を実行（初回 unload の取りこぼし防止）
     updateLogBackup(document);
-    if (!ChatManager.isSaveTarget(document, SELECTORS)) {
+
+    const activeRoomId = getRoomId();
+    let currentChatText = '';
+
+    // 2. 同一 Room または初回のみ live DOM から本文を更新（Room 保護の迂回防止）
+    if (activeRoomId != null && (AppState.pendingExitRoomId == null || AppState.pendingExitRoomId === activeRoomId)) {
+        currentChatText = ChatManager.getChatText(AppState, SELECTORS, document);
+        if (currentChatText !== '') {
+            AppState.tmpChatLogText = currentChatText;
+            AppState.pendingExitChatLogText = currentChatText;
+            AppState.pendingExitRoomId = activeRoomId;
+        }
+    }
+
+    const hasPendingLog = AppState.pendingExitChatLogText !== '';
+    const isCurrentRoom = AppState.pendingExitRoomId != null &&
+        activeRoomId != null &&
+        AppState.pendingExitRoomId === activeRoomId;
+
+    // 3. 通話中判定（退出ボタンが存在する間はアクティブな通話中）
+    const isInActiveCall = document.querySelector(SELECTORS.exitButton) != null;
+
+    // 4. 退出後画面（通話終了後）の判定
+    const isPostMeetingScreen = !isInActiveCall && (
+        AppState.postExitCompleted ||
+        AppState.exitedUIInserted ||
+        document.querySelector(SELECTORS.unprocessedRemovedMessage) != null
+    );
+
+    // 5. 実機切り分け用の一時デバッグログ（本文は出さずフラグ・文字数のみ）
+    console.debug('[GMCTC] beforeunload state', {
+        wasSaveTarget: AppState.wasSaveTarget,
+        isLiveSaveTarget: ChatManager.isSaveTarget(document, SELECTORS),
+        chatTextLength: currentChatText.length,
+        pendingTextLength: AppState.pendingExitChatLogText.length,
+        pendingExitRoomId: AppState.pendingExitRoomId,
+        activeRoomId: activeRoomId,
+        isInActiveCall: isInActiveCall,
+        postExitCompleted: AppState.postExitCompleted,
+        isPostMeetingScreen: isPostMeetingScreen,
+        visibilityState: document.visibilityState
+    });
+
+    // 5. 退避ログなし、または Room 不一致の場合は要求しない
+    if (!hasPendingLog || !isCurrentRoom) {
         return;
     }
-    const chatText = ChatManager.getChatText(AppState, SELECTORS, document);
-    if (chatText !== '') {
-        AppState.tmpChatLogText = chatText;
-        AppState.pendingExitChatLogText = chatText;
-        e.returnValue = 'Remove?';
+
+    // 6. 既に退出後画面にいる場合はダイアログを要求しない
+    if (isPostMeetingScreen) {
+        return;
     }
+
+    // 7. 会議中（通話中）の離脱時のみ W3C / ブラウザ標準の確認要求を設定
+    event.preventDefault();
+    event.returnValue = '';
 });
 
 UIManager.initializeCopyButtonObserver(CONFIG, SELECTORS, IDS, document);
@@ -315,7 +413,7 @@ window.documentPictureInPicture.addEventListener('enter', event => {
         DOMUtils.observeAndAttachEventPinP(pinpWindow, SELECTORS.exitButton, 'click', saveChat, true);
         
         // PinP内でのコピーボタンのイベントリスナーを設定
-        DOMUtils.observeAndAttachEventPinP(pinpWindow, `#${IDS.copyButton}`, 'click', saveChat, true);
+        DOMUtils.observeAndAttachEventPinP(pinpWindow, `#${IDS.copyButton}`, 'click', saveChatFromPinPCopy, true);
         
         // PinPウィンドウのbeforeunloadイベント対応
         pinpWindow.addEventListener('beforeunload', (e) => {

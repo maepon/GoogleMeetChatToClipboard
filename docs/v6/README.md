@@ -50,10 +50,20 @@ Google Meet の新しい画面構成に合わせて、`content.js` / `ChatManage
 ### 実装時の確認事項
 
 - `div.hsLqkc` と `chatTitle` の安定性は、Google Meet の DOM 変更に追随する前提で受け入れる
+- 通常の保存対象判定や UI 注入では `div.hsLqkc` を使用する
+- メインウィンドウの `beforeunload` 判定は、チャットパネル開閉状態に左右されないよう退避ログ（`pendingExitChatLogText`）と Room 一致を主軸にする
+- PinP 側の `beforeunload` は今回の退避ログ駆動改修の対象外であり、既存の live DOM 判定を維持する
 - 退室クリック時に `div.hsLqkc` がまだ参照できるかは、実装後に実機で確認する
-- PinP でもメイン画面と同じ保存対象判定を使う
-- `beforeunload` は `chatTitle` に依存させず、`div.hsLqkc` 単独で保存対象を判定する
 
 ## 作業ファイル
 
 - [selector-workspace.md](./selector-workspace.md)
+
+## 共有方針
+
+- [スコープおよびエッジケース対応方針](./scope_and_edge_case_policy.md): v6 共通の P0/P1/P2、完了条件、対象外事項、レビュー基準。
+- [TC-1.5 調査報告および確定修正仕様書](./tc1_5_investigation_report.md): 退出後 textarea 不表示の個別調査・修正記録。
+- [TC-1.5 `beforeunload` 調査および実装指示](./tc1_5_beforeunload_investigation_and_implementation_instructions.md): 確認ダイアログ不表示と textarea 一瞬表示の原因切り分け・再修正指示。
+- [コピー制御・非同期競合防止 改修完了報告書](./review_fix_completion_report.md): コピー状態管理の個別改修記録。
+- [退避ログ駆動型 beforeunload 再設計 実装計画書](./log_driven_beforeunload_redesign_plan.md): 退避ログ基準のダイアログ判定・ライフサイクル再設計計画。
+- [退避ログ駆動型 beforeunload 再設計 改修完了報告書](./log_driven_beforeunload_redesign_completion_report.md): 退避ログ駆動型判定・textarea 直接コピー実装の完了報告。
