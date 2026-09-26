@@ -1,0 +1,36 @@
+{
+  "//": "PR作成フェーズ専用。エージェントはブランチを切ってコミットするところまで。",
+  "//push": "push と gh pr create はエージェントに渡さず、run-phase.sh が実行する。外向きの操作の直前に、ブランチ名とコミット対象を機械的に検査したいため。",
+  "//deny": "ユーザーレベル設定に Bash(git push *) があると全形の push が通ってしまうので、ここで塞ぐ。コロン形の deny は前置一致で allow に勝つ（実測）。",
+  "//write": "Write / Edit のパス指定ルールは効かない（実測。詳細は .claude/phase-permissions.json）。裸で渡し、基盤ファイルの保護は run-phase.sh 側で行う。",
+  "//not-allowed": "grep / cat / sed 等の汎用の読み取りコマンドと git -C <path> ... は allow しない。理由は .claude/phase-permissions.json に書いてある（Read の deny と git push の deny をそれぞれすり抜けるため）。",
+  "permissions": {
+    "allow": [
+      "Bash(gh issue view:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git switch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(node tmp/:*)",
+      "Bash(echo:*)",
+      "Bash(mkdir:*)",
+      "Bash(cd:*)",
+      "Read",
+      "Write"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Bash(rm:*)",
+      "Bash(git push:*)",
+      "Bash(git push)",
+      "Bash(gh pr:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git rebase:*)"
+    ]
+  }
+}

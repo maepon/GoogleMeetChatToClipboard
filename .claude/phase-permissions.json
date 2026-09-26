@@ -1,0 +1,37 @@
+{
+  "//": "spec / impl / review の各フェーズ共通の権限。ファイル名を settings.json にしない理由は scripts/claude-run.sh の冒頭に書いてある。",
+  "//deny": "コロン形の deny は前置一致で、ベースコマンドの allow にも勝つ（実測）。git push は全形が塞がる。",
+  "//write": "Write / Edit にパスを付けたルールは allow も deny も一切マッチしない（実測）。裸で渡すしかないので、基盤ファイルの保護は run-phase.sh の作業ツリー検査で行う（gitignore 対象のディレクトリに消えると困るものがあるなら、それらは検査に出ないので、プロンプトで禁じるしかない）。Read のパス指定は効くので .env は deny できる。",
+  "//grep": "grep / cat / sed / awk / head は allow しない。ファイルを読める汎用コマンドを1つ通すと Read(./.env) の deny を素通りできるため。エージェントが grep へのパイプを拒否されるのは想定どおりで、Read で代替させる。",
+  "//git-c": "git -C <path> ... も allow しない。Bash のマッチは前置文字列なので、git -C . push が git push の deny をすり抜けるため。エージェントが繰り返し試すが、通してはいけない。",
+  "permissions": {
+    "allow": [
+      "Bash(gh issue view:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(gh auth status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git status:*)",
+      "Bash(node tmp/:*)",
+      "Bash(echo:*)",
+      "Bash(node --version)",
+      "Bash(npm --version)",
+      "Bash(mkdir:*)",
+      "Bash(which:*)",
+      "Bash(cd:*)",
+      "Read",
+      "Edit",
+      "Write"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Bash(git push:*)",
+      "Bash(git push)",
+      "Bash(git commit:*)",
+      "Bash(gh pr:*)",
+      "Bash(rm:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset --hard:*)"
+    ]
+  }
+}

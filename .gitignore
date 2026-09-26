@@ -13,13 +13,18 @@ Thumbs.db
 *.swp
 *.swo
 *~
-.claude/
 .junie/
 
 # Temporary files
 *.tmp
 *.temp
 *.log
+
+# AI開発フロー（ai-flow）。.claude/*-permissions.json はフローの一部なのでコミットする
+.env
+.claude/settings.json
+.claude/settings.local.json
+tmp/
 
 # Debug and test data
 docs/data/

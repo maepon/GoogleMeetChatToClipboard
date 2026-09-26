@@ -1,0 +1,35 @@
+{
+  "//": "PR 作成後に走るフェーズ（code-review と pr-review）の権限。ベースの phase-permissions.json との違いは2つで、git restore を足し、gh issue comment を外してある。投稿先が Issue ではなく PR で、投稿は run-phase.sh が行うため。ファイル名を settings.json にしない理由は scripts/claude-run.sh の冒頭に書いてある。",
+  "//restore": "pr-review の主張2（テストが実装を追認しているだけではないか）を確かめるには、実装を意図的に壊して tmp/ 経由の node 直接呼び出しの結果が変わるかを見る必要がある（このリポジトリには npm test が無い）。壊したら戻さなければならないので git restore を許可する。これらのフェーズは PR 作成後に走るため差分はコミット済みで、restore で失われるものが無い。implement / review では未コミットの実装が消えるので、ベースのプロファイルには入れない。code-review 側は実装を壊さないので restore は要らないが、どちらのフェーズも run-phase.sh が作業ツリーの前後比較で書き換えを捕まえるため、プロファイルは分けていない。",
+  "//pr": "gh pr は deny のまま。反論の本文はファイルに書かせて、PR への投稿は run-phase.sh が行う。コロン形の deny は前置一致でベースコマンドの allow にも勝つ（実測）。",
+  "permissions": {
+    "allow": [
+      "Bash(gh issue view:*)",
+      "Bash(gh auth status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git status:*)",
+      "Bash(git restore:*)",
+      "Bash(node tmp/:*)",
+      "Bash(echo:*)",
+      "Bash(node --version)",
+      "Bash(npm --version)",
+      "Bash(mkdir:*)",
+      "Bash(which:*)",
+      "Bash(cd:*)",
+      "Read",
+      "Edit",
+      "Write"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Bash(git push:*)",
+      "Bash(git push)",
+      "Bash(git commit:*)",
+      "Bash(gh pr:*)",
+      "Bash(rm:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset --hard:*)"
+    ]
+  }
+}

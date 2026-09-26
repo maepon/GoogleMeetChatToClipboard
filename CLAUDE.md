@@ -108,6 +108,15 @@ The extension requires minimal permissions:
 - GoogleがMeetのインターフェースを変更した際に頻繁な更新が必要 / Requires frequent updates when Google changes Meet's interface
 - Google Meetのみで動作（他のビデオ会議プラットフォームでは動作しない） / Only works with Google Meet (not other video conferencing platforms)
 
+## AI開発フロー / AI Development Flow
+
+GitHub Issue を起点に、Claude Code をヘッドレスで回して Pull Request まで持っていく自動開発フロー（`ai-flow`）を導入しています。`make spec ISSUE=n` で指示書を固め、`make impl ISSUE=n` で実装・レビュー・PR 作成まで自動で進みます。
+
+- 導入・運用ガイド: `docs/ai-workflow-setup.md`（セットアップ手順、判定の設計、権限の設計、止まったときの読み方）
+- 入口: `Makefile`（`make help` で一覧）
+- 基盤ファイル（`Makefile` / `scripts/` / `prompts/` / `.claude/*-permissions.json` / `docs/ai-workflow-setup.md` / `.github/`）はフローの土台なので、この案件の変更（機能追加・バグ修正）としては変更しない
+- このリポジトリには現時点で自動テスト・フォーマッタが無いため、`ai-flow` 内の動作確認は `tmp/` 配下のスクリプトから `node` で `modules/` 配下の関数を直接呼び出す方式になっています（詳細は `docs/ai-workflow-setup.md` §0）
+
 ## 現在の開発状況 / Current Development Status
 
 ### 完了済み / Completed
