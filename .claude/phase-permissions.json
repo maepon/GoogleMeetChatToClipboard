@@ -12,6 +12,7 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git status:*)",
+      "Bash(npm test:*)",
       "Bash(node tmp/:*)",
       "Bash(echo:*)",
       "Bash(node --version)",

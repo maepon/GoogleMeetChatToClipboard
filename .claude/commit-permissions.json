@@ -16,6 +16,7 @@
       "Bash(git switch:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
+      "Bash(npm test:*)",
       "Bash(node tmp/:*)",
       "Bash(echo:*)",
       "Bash(mkdir:*)",

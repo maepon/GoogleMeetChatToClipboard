@@ -115,7 +115,7 @@ GitHub Issue を起点に、Claude Code をヘッドレスで回して Pull Requ
 - 導入・運用ガイド: `docs/ai-workflow-setup.md`（セットアップ手順、判定の設計、権限の設計、止まったときの読み方）
 - 入口: `Makefile`（`make help` で一覧）
 - 基盤ファイル（`Makefile` / `scripts/` / `prompts/` / `.claude/*-permissions.json` / `docs/ai-workflow-setup.md` / `.github/`）はフローの土台なので、この案件の変更（機能追加・バグ修正）としては変更しない
-- このリポジトリには現時点で自動テスト・フォーマッタが無いため、`ai-flow` 内の動作確認は `tmp/` 配下のスクリプトから `node` で `modules/` 配下の関数を直接呼び出す方式になっています（詳細は `docs/ai-workflow-setup.md` §0）
+- `npm test`（`test/v6_dom_test.js`）による自動テストがあります。DOMに依存しない受入基準（ロケールファイル等）の確認は `tmp/` 配下のスクリプトから `node` で直接確認する方式を併用します。Prettier等のフォーマッタは未導入のため整形チェックは無効化してあります（詳細は `docs/ai-workflow-setup.md` §0）
 
 ## 現在の開発状況 / Current Development Status
 

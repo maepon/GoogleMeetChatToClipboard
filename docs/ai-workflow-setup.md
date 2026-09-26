@@ -9,13 +9,15 @@
 
 このリポジトリ（GoogleMeetChatToClipboard）に移植した時点での、標準構成からの変更点です。
 
-- **自動テスト・フォーマッタ未導入。** `npm test` は無く、Prettier 等のフォーマッタも
-  入っていないため、`scripts/run-phase.sh` の整形チェックは `format_target()` を常に偽にして
-  無効化してあります。動作確認はすべて `tmp/` 配下のスクリプトから `node` で
-  `modules/` 配下の関数を直接呼び出す方法に統一しています（`.claude/*-permissions.json` の
-  allow は `Bash(node tmp/:*)` のみ）。テストランナーやフォーマッタを導入したら、
-  `scripts/run-phase.sh` の `format_target()` / `format_ok()` / `FORMAT_FIX` と、
-  各プロンプトの `node tmp/<ファイル名>.js` の案内をそちらに書き戻してください
+- **`npm test`（`test/v6_dom_test.js`）による自動テストがあります**（v6.0.0 で追加）。
+  標準的なテストフレームワークではなく、JSDOM上でDOM挙動を検証する独自のPASS/FAIL集計
+  スクリプトです。新しいテストケースはこのファイルに追記する形になります。DOMに依存しない
+  受入基準（ロケールファイルの構造・`manifest.json`の値など）は、引き続き `tmp/` 配下の
+  スクリプトから `node` で直接確認する方法を併用します（`.claude/*-permissions.json` の
+  allow は `Bash(npm test:*)` と `Bash(node tmp/:*)` の両方）
+- **Prettier 等のフォーマッタは現時点で未導入です。** そのため `scripts/run-phase.sh` の
+  整形チェックは `format_target()` を常に偽にして無効化してあります。フォーマッタを
+  導入したら、`format_target()` / `format_ok()` / `FORMAT_FIX` をそちらに書き戻してください
 - **`docs/` を案件のドキュメント（`docs/development/` など）に使っている**ため、
   `TOOLING_PATHS` は `docs/` 全体ではなく `docs/ai-workflow-setup.md`（このファイル）だけを
   保護対象にしてあります。`docs/development/` 配下はエージェントが自由に更新できます
