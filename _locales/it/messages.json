@@ -1,0 +1,18 @@
+{
+  "appName": {
+    "message": "Google Meet Chat to Clipboard",
+    "description": "Nome dell'estensione"
+  },
+  "appDesc": {
+    "message": "Salva la chat di Google Meet negli appunti. Pensata per account Google personali. Copia con un clic e salvataggio automatico.",
+    "description": "Descrizione dell'estensione per il Chrome Web Store"
+  },
+  "copyButtonText": {
+    "message": "Copia",
+    "description": "Testo visualizzato sul pulsante di copia nell'interfaccia di uscita"
+  },
+  "clipboardWriteError": {
+    "message": "Scrittura negli appunti non riuscita:",
+    "description": "Messaggio di errore quando la scrittura negli appunti non riesce"
+  }
+}
