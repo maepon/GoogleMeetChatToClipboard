@@ -20,7 +20,7 @@ Thumbs.db
 *.temp
 *.log
 
-# AI開発フロー（ai-flow）。.claude/*-permissions.json はフローの一部なのでコミットする
+# Claude Code の個人設定。AI開発フローの ignore ルールは ai-flow/.gitignore にある
 .env
 .claude/settings.json
 .claude/settings.local.json

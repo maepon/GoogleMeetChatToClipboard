@@ -110,12 +110,15 @@ The extension requires minimal permissions:
 
 ## AI開発フロー / AI Development Flow
 
-GitHub Issue を起点に、Claude Code をヘッドレスで回して Pull Request まで持っていく自動開発フロー（`ai-flow`）を導入しています。`make spec ISSUE=n` で指示書を固め、`make impl ISSUE=n` で実装・レビュー・PR 作成まで自動で進みます。
+GitHub Issue を起点に、Claude Code をヘッドレスで回して Pull Request まで持っていく自動開発フロー [issue-to-pr-flow](https://github.com/maepon/issue-to-pr-flow) を、`git subtree` で `ai-flow/` に取り込んで使っています。`ai-flow/` で `make spec ISSUE=n` を実行して指示書を固め、`make impl ISSUE=n` で実装・レビュー・PR 作成まで自動で進みます。
 
-- 導入・運用ガイド: `docs/ai-workflow-setup.md`（セットアップ手順、判定の設計、権限の設計、止まったときの読み方）
-- 入口: `Makefile`（`make help` で一覧）
-- 基盤ファイル（`Makefile` / `scripts/` / `prompts/` / `.claude/*-permissions.json` / `docs/ai-workflow-setup.md` / `.github/`）はフローの土台なので、この案件の変更（機能追加・バグ修正）としては変更しない
-- `npm test`（`test/v6_dom_test.js`）による自動テストがあります。DOMに依存しない受入基準（ロケールファイル等）の確認は `tmp/` 配下のスクリプトから `node` で直接確認する方式を併用します。Prettier等のフォーマッタは未導入のため整形チェックは無効化してあります（詳細は `docs/ai-workflow-setup.md` §0）
+- 導入・運用ガイド: `ai-flow/docs/setup.md`（セットアップ手順、判定の設計、権限の設計、止まったときの読み方）
+- 入口: `ai-flow/Makefile`（`cd ai-flow && make help` で一覧）
+- プロジェクト固有の設定: ルートの `.ai-flow/`（`config.mk` のテストコマンド・出力言語、`permissions.json` の追加権限、`context.md` / `risk-catalog.md` / `user-flows.md` のプロンプト埋め込みテキスト）
+- 個人設定（通知先、モデルID）: `ai-flow/.env`（git 管理外。`ai-flow/.env.example` を参照）
+- `ai-flow/` は upstream の内容なので直接編集しない。更新は `git subtree pull --prefix=ai-flow https://github.com/maepon/issue-to-pr-flow.git <tag> --squash` の直後に `ai-flow/scripts/resign-subtree-merge.sh` を実行し、変更は upstream に送る
+- 基盤ファイル（`ai-flow/` / `.ai-flow/` / ルートの `.gitignore`）は、この案件の変更（機能追加・バグ修正）としては変更しない。人が別の PR で変更する
+- `npm test`（`test/v6_dom_test.js`）による自動テストがあります。DOMに依存しない受入基準（ロケールファイル等）の確認は `ai-flow/tmp/` 配下のスクリプトから `node` で直接確認する方式を併用します。Prettier等のフォーマッタは未導入のため `.ai-flow/config.mk` の `FORMAT_*` を空にして整形チェックを無効化しています
 
 ## 現在の開発状況 / Current Development Status
 

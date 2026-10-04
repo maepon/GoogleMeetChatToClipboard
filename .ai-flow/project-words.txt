@@ -1,0 +1,9 @@
+# フローの共有部分（prompts / permission profiles）に出てきてはいけない、このプロジェクト固有の語。
+# 1行1語。make check が単語単位・大文字小文字無視で探し、見つかったら落ちる。# で始まる行は無視。
+jsdom
+selectors
+pinp
+clipboard
+_locales
+v6_dom_test
+GoogleMeetChatToClipboard
