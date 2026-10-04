@@ -1,0 +1,11 @@
+{
+  "//": "Extra permissions for this project. scripts/merge-permissions.sh adds them to every profile in <flow dir>/.claude/*-permissions.json each time claude starts. Allow the commands in config.mk (tests, formatting) here. make check rejects commands that must never be allowed (general-purpose readers like cat / grep, bare interpreters, git -C, ...); see docs/setup.md. Every .env is already denied by the base profiles; to protect other secret files, add them to deny as Read(//**/<path>), e.g. \"deny\": [\"Read(//**/config/secrets.yml)\"] (a relative path would only match under the flow directory).",
+  "allow": [
+    "Bash(npm test:*)",
+    "Bash(npm run format:check)",
+    "Bash(node --test:*)",
+    "Bash(npx prettier:*)",
+    "Bash(node --version)",
+    "Bash(npm --version)"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "//": "Permissions for the phases that run after the PR is created (code-review and pr-review). Two differences from the base phase-permissions.json: git restore is added and gh issue comment is removed, because the destination is the PR rather than the Issue and run-phase.sh does the posting. Why the file is not named settings.json is explained at the top of scripts/claude-run.sh.",
+  "//restore": "To check pr-review's Claim 2 (do the tests merely rubber-stamp the implementation?), the agent has to deliberately break the implementation and see whether the tests (TEST_CMD) fail. What it breaks must be restored, so git restore is allowed. These phases run after the PR is created, so the diff is committed and restore loses nothing. In implement / review it would wipe the uncommitted implementation, so it is not in the base profile. code-review does not break the implementation and does not need restore, but run-phase.sh catches any rewrite in both phases by comparing the working tree before and after, so the profiles are not split.",
+  "//pr": "gh pr stays denied. The agent writes the body of its arguments to a file, and run-phase.sh posts it to the PR. A deny in the colon form is a prefix match and beats an allow of the base command too (measured).",
+  "//git-grep": "git grep:* is allowed. It only searches files tracked by git, so .env (gitignored) is excluded by default. --no-index would let it read .env, but running the tests (TEST_CMD and the like, added via .ai-flow/permissions.json) already allows arbitrary reads, so the attack surface does not grow. With grep forbidden entirely, things like the removal of a wording could not be checked mechanically, and verification stopped at inference. By default it only searches below the current directory (the flow directory), so the agent is told to add -- ':/' for the whole repository (_rules.md).",
+  "//date": "date is allowed. It neither reads nor writes. It lets the agent verify by running rather than by inference when an AC is about the implementation date, such as a last-updated date.",
+  "//env": "Read(./.env) only covers the flow's own .env: a relative pattern matches at or under the current directory (the flow directory), never the parent. Read(//**/.env) blocks a file named .env anywhere, including the project's root .env (verified: the root .env and a nested .env went from readable to denied, while .env.example stayed readable). .env.* is not blocked because .env.example would be blocked too, and a rule starting with // cannot be carved out with !. Projects add other secret files to deny in .ai-flow/permissions.json with the same Read(//**/<path>) form. This stops the Read tool only: running the tests can still read anything (deny is not isolation).",
+  "permissions": {
+    "allow": [
+      "Bash(gh issue view:*)",
+      "Bash(gh auth status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git status:*)",
+      "Bash(git restore:*)",
+      "Bash(date:*)",
+      "Bash(git grep:*)",
+      "Bash(echo:*)",
+      "Bash(mkdir:*)",
+      "Bash(which:*)",
+      "Bash(cd:*)",
+      "Read",
+      "Edit",
+      "Write"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(//**/.env)",
+      "Bash(git push:*)",
+      "Bash(git push)",
+      "Bash(git commit:*)",
+      "Bash(gh pr:*)",
+      "Bash(rm:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset --hard:*)"
+    ]
+  },
+  "//project": "Allows for project-specific commands such as tests and formatting live in .ai-flow/permissions.json. claude-run.sh merges them into this file on every launch (scripts/merge-permissions.sh)."
+}
