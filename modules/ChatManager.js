@@ -203,7 +203,7 @@ const ChatManager = {
         
         try {
             // フォーカス移動せずにexecCommandを直接使用
-            this._execCommandClipboard(chatMessage, appState, false);
+            return this._execCommandClipboard(chatMessage, appState, false);
         } finally {
             if (appState) {
                 appState.copyInProgress = false;

@@ -23,13 +23,18 @@ const SELECTORS = {
 };
 
 const CONFIG = {
-    TIMEOUTS: { CHAT_TITLE_CHECK: 500, MEMBER_NAME_CHECK: 300, PINP_ELEMENT_CHECK: 5000 },
+    TIMEOUTS: { CHAT_TITLE_CHECK: 500, MEMBER_NAME_CHECK: 300, PINP_ELEMENT_CHECK: 5000, COPY_FEEDBACK: 2000 },
     STYLES: {
         COPY_BUTTON: { backgroundColor: 'rgba(0, 0, 0, 0)', border: 'none', padding: '12px', cursor: 'pointer', borderRadius: '50%' },
         COPY_BUTTON_HOVER: 'rgba(0, 0, 0, 0.05)',
         COPY_BUTTON_NORMAL: 'rgba(0, 0, 0, 0)',
         TEXTAREA: { width: '300px', height: '180px' },
-        COPY_ICON: { color: 'rgb(95, 99, 104)' }
+        COPY_ICON: { color: 'rgb(95, 99, 104)' },
+        COPY_FEEDBACK: {
+            success: { icon: 'check', color: 'rgb(24, 128, 56)', messageKey: 'copyFeedbackSuccess', fallback: 'コピーしました' },
+            failed: { icon: 'error', color: 'rgb(217, 48, 37)', messageKey: 'copyFeedbackFailed', fallback: 'コピーに失敗しました' },
+            empty: { icon: 'info', color: 'rgb(227, 116, 0)', messageKey: 'copyFeedbackEmpty', fallback: 'コピーするチャットがありません' }
+        }
     }
 };
 
@@ -91,7 +96,7 @@ function createEnvironment(htmlContent, url = 'https://meet.google.com/abc-defg-
     window.eval(uiManagerCode);
 
     if (loadContentJs) {
-        window.eval(contentJsCode + '; window.AppState = AppState; window.saveChat = saveChat; window.saveChatLog = saveChatLog; window.saveChatFromPinP = saveChatFromPinP; window.saveChatFromPinPCopy = saveChatFromPinPCopy; window.getRoomId = getRoomId; window.resetAppState = resetAppState; window.updateLogBackup = updateLogBackup; window.clearExitPendingState = clearExitPendingState; window.checkRoomChangeAndReset = checkRoomChangeAndReset; window.checkAndCreateExitedUI = checkAndCreateExitedUI;');
+        window.eval(contentJsCode + '; window.AppState = AppState; window.saveChat = saveChat; window.saveChatLog = saveChatLog; window.saveChatFromPinP = saveChatFromPinP; window.saveChatFromPinPCopy = saveChatFromPinPCopy; window.getRoomId = getRoomId; window.resetAppState = resetAppState; window.updateLogBackup = updateLogBackup; window.clearExitPendingState = clearExitPendingState; window.checkRoomChangeAndReset = checkRoomChangeAndReset; window.checkAndCreateExitedUI = checkAndCreateExitedUI; window.CONFIG = CONFIG;');
     }
 
     return { 
@@ -1811,6 +1816,183 @@ await runTest('Phase 5 (7): 同一 Room 再参加時のフラグ分離 - 再参�
     window.dispatchEvent(event);
 
     assert.strictEqual(event.defaultPrevented, true, '同一 Room 再参加後は旧フラグが引き継がれず新セッションでダイアログ要求されること');
+});
+
+// ----------------------------------------------------
+// コピー結果表示 (Issue #10)
+// ----------------------------------------------------
+const emptyChatDomHtml = `
+    <html><body>
+        <div class="hsLqkc"></div>
+        <div jsname="uPuGNe"><div role="heading">チャット</div></div>
+        <div jsname="xySENc" aria-live="polite"></div>
+    </body></html>
+`;
+
+const pinpChatDomHtml = `
+    <html><body>
+        <div class="hsLqkc"></div>
+        <div jsname="xySENc" aria-live="polite">
+            <div class="Ss4fHf" jsname="Ypafjf">
+                <div class="poVWob">PinP送信者</div>
+                <div jsname="biJjHb">12:00</div>
+                <div jsname="dTKtvb">PinPメッセージ</div>
+            </div>
+        </div>
+    </body></html>
+`;
+
+const pinpEmptyDomHtml = '<html><body><div class="hsLqkc"></div><div jsname="xySENc" aria-live="polite"></div></body></html>';
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// ハンドラー付与を待ってからメインのコピーボタンを押し、Promise 完了を待つ
+async function clickCopyButton(window) {
+    await sleep(0);
+    const button = window.document.querySelector(`#${IDS.copyButton}`);
+    assert.notStrictEqual(button, null, 'コピーボタンが存在すること');
+    button.click();
+    await sleep(0);
+    return button;
+}
+
+// PinP 用 JSDOM（ボタン付き）を作って documentPictureInPicture.window に設定する
+function createPinPEnv(pinpHtml, mainHtml = disableDomHtml) {
+    const env = createEnvironment(mainHtml);
+    const pinpDom = new JSDOM(pinpHtml);
+    createdDoms.push(pinpDom);
+    const pinpDoc = pinpDom.window.document;
+    const wrap = env.UIManager.createCopyButton(CONFIG, IDS, pinpDoc);
+    pinpDoc.body.append(wrap);
+    env.window.documentPictureInPicture = { addEventListener: () => {}, window: pinpDom.window };
+    env.pinpButton = pinpDoc.querySelector(`#${IDS.copyButton}`);
+    return env;
+}
+
+function dispatchPinPCopyClick(window) {
+    window.dispatchEvent(new window.MessageEvent('message', {
+        data: { type: 'PINP_EVENT', eventType: 'click', selector: '#GMCTC-copyButton' }
+    }));
+}
+
+function assertNoFeedback(button) {
+    assert.strictEqual(button.hasAttribute('data-gmctc-feedback'), false);
+    assert.strictEqual(button.hasAttribute('title'), false);
+    assert.strictEqual(button.hasAttribute('aria-label'), false);
+}
+
+await runTest('コピー結果表示: メインボタン押下で成功表示になること', async () => {
+    const { window, getWrittenText } = createEnvironment(disableDomHtml);
+    const button = await clickCopyButton(window);
+    assert.strictEqual(button.getAttribute('data-gmctc-feedback'), 'success');
+    assert.strictEqual(button.querySelector('span').textContent, 'check');
+    assert.strictEqual(button.getAttribute('title'), 'copyFeedbackSuccess');
+    assert.strictEqual(button.getAttribute('aria-label'), 'copyFeedbackSuccess');
+    assert.ok(getWrittenText().length > 0, 'クリップボードにチャット本文が書かれること');
+    assert.strictEqual(window.AppState.autoCopySucceeded, false);
+    assert.strictEqual(window.AppState.fallbackCopySucceeded, true);
+});
+
+await runTest('コピー結果表示: writeText 失敗かつ execCommand 失敗で失敗表示になること', async () => {
+    const { window } = createEnvironment(disableDomHtml);
+    window.navigator.clipboard.writeText = () => Promise.reject(new Error('denied'));
+    window.document.execCommand = () => false;
+    const button = await clickCopyButton(window);
+    await sleep(10);
+    assert.strictEqual(button.getAttribute('data-gmctc-feedback'), 'failed');
+    assert.strictEqual(button.querySelector('span').textContent, 'error');
+    assert.strictEqual(button.getAttribute('title'), 'copyFeedbackFailed');
+    assert.strictEqual(window.AppState.autoCopySucceeded, false);
+});
+
+await runTest('コピー結果表示: チャット 0 件で empty 表示になりクリップボードに書かないこと', async () => {
+    const { window } = createEnvironment(emptyChatDomHtml);
+    let writeCount = 0;
+    let execCount = 0;
+    window.navigator.clipboard.writeText = () => { writeCount++; return Promise.resolve(); };
+    window.document.execCommand = () => { execCount++; return true; };
+    const button = await clickCopyButton(window);
+    await sleep(10);
+    assert.strictEqual(writeCount, 0);
+    assert.strictEqual(execCount, 0);
+    assert.strictEqual(button.getAttribute('data-gmctc-feedback'), 'empty');
+    assert.strictEqual(button.querySelector('span').textContent, 'info');
+    assert.strictEqual(button.getAttribute('title'), 'copyFeedbackEmpty');
+    assert.strictEqual(window.AppState.autoCopySucceeded, false);
+});
+
+await runTest('コピー結果表示: 表示時間経過後に元の状態へ戻ること', async () => {
+    const { window } = createEnvironment(disableDomHtml);
+    window.CONFIG.TIMEOUTS.COPY_FEEDBACK = 50;
+    const button = await clickCopyButton(window);
+    assert.strictEqual(button.getAttribute('data-gmctc-feedback'), 'success');
+    await sleep(120);
+    assert.strictEqual(button.querySelector('span').textContent, 'content_copy');
+    assert.strictEqual(button.querySelector('span').style.color, 'rgb(95, 99, 104)');
+    assertNoFeedback(button);
+});
+
+await runTest('コピー結果表示: 表示中の再押下でタイマーが張り直されること', async () => {
+    const { window } = createEnvironment(disableDomHtml);
+    window.CONFIG.TIMEOUTS.COPY_FEEDBACK = 200;
+    const button = await clickCopyButton(window);
+    await sleep(120);
+    button.click();
+    await sleep(140); // 1 回目の満了時刻（約 200ms）を過ぎた時点
+    assert.strictEqual(button.getAttribute('data-gmctc-feedback'), 'success', '1 回目の満了後も表示が残ること');
+    await sleep(150); // 2 回目の満了後
+    assertNoFeedback(button);
+    assert.strictEqual(button.querySelector('span').textContent, 'content_copy');
+});
+
+await runTest('コピー結果表示: PinP のコピーボタンに結果が表示されること（成功・0 件）', async () => {
+    // 成功
+    const env1 = createPinPEnv(pinpChatDomHtml);
+    const mainButton = env1.document.querySelector(`#${IDS.copyButton}`);
+    dispatchPinPCopyClick(env1.window);
+    await sleep(0);
+    assert.strictEqual(env1.pinpButton.getAttribute('data-gmctc-feedback'), 'success');
+    assert.strictEqual(env1.pinpButton.querySelector('span').textContent, 'check');
+    assert.strictEqual(env1.pinpButton.getAttribute('title'), 'copyFeedbackSuccess');
+    assert.strictEqual(env1.window.AppState.autoCopySucceeded, false);
+    if (mainButton) {
+        assert.strictEqual(mainButton.hasAttribute('data-gmctc-feedback'), false, 'メイン側ボタンは変化しないこと');
+    }
+
+    // 0 件
+    const env2 = createPinPEnv(pinpEmptyDomHtml);
+    const mainButton2 = env2.document.querySelector(`#${IDS.copyButton}`);
+    dispatchPinPCopyClick(env2.window);
+    await sleep(0);
+    assert.strictEqual(env2.pinpButton.getAttribute('data-gmctc-feedback'), 'empty');
+    assert.strictEqual(env2.pinpButton.querySelector('span').textContent, 'info');
+    assert.strictEqual(env2.window.AppState.autoCopySucceeded, false);
+    if (mainButton2) {
+        assert.strictEqual(mainButton2.hasAttribute('data-gmctc-feedback'), false);
+    }
+});
+
+await runTest('コピー結果表示: PinP コピー失敗時に failed 表示になること', async () => {
+    const env = createPinPEnv(pinpChatDomHtml);
+    env.window.document.execCommand = () => false;
+    dispatchPinPCopyClick(env.window);
+    await sleep(0);
+    assert.strictEqual(env.pinpButton.getAttribute('data-gmctc-feedback'), 'failed');
+    assert.strictEqual(env.pinpButton.querySelector('span').textContent, 'error');
+    assert.strictEqual(env.window.AppState.autoCopySucceeded, false);
+});
+
+await runTest('コピー結果表示: chrome 未定義・getMessage 例外でもフォールバック文言になること', async () => {
+    const env1 = createEnvironment(disableDomHtml);
+    env1.window.chrome = undefined;
+    const button1 = await clickCopyButton(env1.window);
+    assert.strictEqual(button1.getAttribute('data-gmctc-feedback'), 'success');
+    assert.strictEqual(button1.getAttribute('title'), 'コピーしました');
+
+    const env2 = createEnvironment(disableDomHtml);
+    env2.window.chrome = { i18n: { getMessage: () => { throw new Error('Extension context invalidated'); } } };
+    const button2 = await clickCopyButton(env2.window);
+    assert.strictEqual(button2.getAttribute('title'), 'コピーしました');
 });
 
 // 全 JSDOM インスタンスを閉じてタイマー (setInterval 等) を解放し、テストプロセスが自然終了できるようにする

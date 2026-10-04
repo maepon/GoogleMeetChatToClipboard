@@ -74,6 +74,63 @@ const UIManager = {
         return copyButton;
     },
 
+    // ボタン単位の復帰タイマー管理
+    _copyFeedbackTimers: new WeakMap(),
+
+    // i18n 文言を取得（未提供・空文字・例外の場合はフォールバック文言を返す）
+    getFeedbackMessage(key, fallback) {
+        try {
+            if (typeof chrome !== 'undefined' && chrome.i18n && typeof chrome.i18n.getMessage === 'function') {
+                const msg = chrome.i18n.getMessage(key);
+                if (msg) {
+                    return msg;
+                }
+            }
+        } catch (error) {
+            // 拡張機能コンテキスト無効化等の異常系ではフォールバック文言を使用（例外を外へ漏らさない）
+        }
+        return fallback;
+    },
+
+    // コピー結果（success / failed / empty）をボタン上に一時表示する
+    showCopyFeedback(button, status, config, targetDoc) {
+        if (!button) return;
+        const feedback = config.STYLES.COPY_FEEDBACK && config.STYLES.COPY_FEEDBACK[status];
+        if (!feedback) return;
+
+        const existingTimer = this._copyFeedbackTimers.get(button);
+        if (existingTimer !== undefined) {
+            clearTimeout(existingTimer);
+        }
+
+        const message = this.getFeedbackMessage(feedback.messageKey, feedback.fallback);
+        const iconSpan = button.querySelector('span');
+        if (iconSpan) {
+            iconSpan.textContent = feedback.icon;
+            iconSpan.style.color = feedback.color;
+        }
+        button.setAttribute('title', message);
+        button.setAttribute('aria-label', message);
+        button.setAttribute('data-gmctc-feedback', status);
+
+        const timerId = setTimeout(() => this.resetCopyFeedback(button, config), config.TIMEOUTS.COPY_FEEDBACK);
+        this._copyFeedbackTimers.set(button, timerId);
+    },
+
+    // 一時表示を元のコピーアイコンに戻す
+    resetCopyFeedback(button, config) {
+        if (!button) return;
+        const iconSpan = button.querySelector('span');
+        if (iconSpan) {
+            iconSpan.textContent = 'content_copy';
+            iconSpan.style.color = config.STYLES.COPY_ICON.color;
+        }
+        button.removeAttribute('title');
+        button.removeAttribute('aria-label');
+        button.removeAttribute('data-gmctc-feedback');
+        this._copyFeedbackTimers.delete(button);
+    },
+
     // ボタンの色を変更するイベント
     handleCopyButtonColorChange(e, color) {
         e.target.style.backgroundColor = color;

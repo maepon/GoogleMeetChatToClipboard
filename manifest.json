@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_appName__",
   "description": "__MSG_appDesc__",
-  "version": "6.1.0",
+  "version": "6.2.0",
   "default_locale": "en",
   "permissions": ["clipboardWrite"],
   "action": {

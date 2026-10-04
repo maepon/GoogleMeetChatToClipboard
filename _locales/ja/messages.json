@@ -14,5 +14,17 @@
   "clipboardWriteError": {
     "message": "クリップボードへの書き込み失敗:",
     "description": "クリップボードの書き込みに失敗した際のエラーメッセージ"
+  },
+  "copyFeedbackSuccess": {
+    "message": "コピーしました",
+    "description": "コピーボタン押下でコピーに成功したときにボタンに表示する文言"
+  },
+  "copyFeedbackFailed": {
+    "message": "コピーに失敗しました",
+    "description": "コピーボタン押下でコピーに失敗したときにボタンに表示する文言"
+  },
+  "copyFeedbackEmpty": {
+    "message": "コピーするチャットがありません",
+    "description": "コピーボタン押下時にコピーするチャットが 0 件だったときにボタンに表示する文言"
   }
 }
