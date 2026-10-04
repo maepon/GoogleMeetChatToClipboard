@@ -1,6 +1,6 @@
-# TC-1.5 `beforeunload` ダイアログ要求改修 報告書 (自動テスト完了・実機検証待ち)
+# TC-1.5 `beforeunload` ダイアログ要求改修 報告書 (自動テスト完了・実機検証完了)
 
-**文書ステータス:** 自動テスト完了・実機検証待ち  
+**文書ステータス:** 自動テスト完了・実機検証完了（2026-10-04、`manual_testing_scenario.md` TC-1.5）  
 **準拠方針書:** [`docs/v6/scope_and_edge_case_policy.md`](./scope_and_edge_case_policy.md)  
 **実装指示書:** [`docs/v6/tc1_5_beforeunload_investigation_and_implementation_instructions.md`](./tc1_5_beforeunload_investigation_and_implementation_instructions.md)  
 **実機検証手順書:** [`docs/v6/manual_testing_scenario.md`](./manual_testing_scenario.md)
@@ -144,3 +144,5 @@ window.addEventListener('beforeunload', (event) => {
 コード改修および JSDOM 自動テスト（全 46 件 PASS、終了コード 0、自然終了）により、**「条件成立時（`wasSaveTarget === true`、非空退避ログ、Room ID 一致）における `beforeunload` キャンセル要求の確実な実行」** を確認しました。
 
 現時点でのステータスは **「自動テスト完了・実機検証待ち」** であり、`TC-1.5` の最終完了判定には [`docs/v6/manual_testing_scenario.md`](./manual_testing_scenario.md) に基づく Chrome 実機手動テストの実施が必要です。
+
+**追記（2026-10-04）:** [`docs/v6/manual_testing_scenario.md`](./manual_testing_scenario.md) の TC-1.5 を Chrome 実機で実施し、期待される結果どおりであることを確認した（完了判定を `[x]` に更新）。§4.2 の P1 課題と §4.3 の P2 事項は引き続き未対応である。
