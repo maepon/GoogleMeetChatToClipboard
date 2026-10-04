@@ -14,5 +14,17 @@
   "clipboardWriteError": {
     "message": "Scrittura negli appunti non riuscita:",
     "description": "Messaggio di errore quando la scrittura negli appunti non riesce"
+  },
+  "copyFeedbackSuccess": {
+    "message": "Copiato",
+    "description": "コピーボタン押下でコピーに成功したときにボタンに表示する文言"
+  },
+  "copyFeedbackFailed": {
+    "message": "Copia non riuscita",
+    "description": "コピーボタン押下でコピーに失敗したときにボタンに表示する文言"
+  },
+  "copyFeedbackEmpty": {
+    "message": "Nessun messaggio di chat da copiare",
+    "description": "コピーボタン押下時にコピーするチャットが 0 件だったときにボタンに表示する文言"
   }
 }

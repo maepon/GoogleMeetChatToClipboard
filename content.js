@@ -3,7 +3,8 @@ const CONFIG = {
     TIMEOUTS: {
         CHAT_TITLE_CHECK: 500,
         MEMBER_NAME_CHECK: 300,
-        PINP_ELEMENT_CHECK: 5000
+        PINP_ELEMENT_CHECK: 5000,
+        COPY_FEEDBACK: 2000
     },
     STYLES: {
         COPY_BUTTON: {
@@ -21,6 +22,11 @@ const CONFIG = {
         },
         COPY_ICON: {
             color: 'rgb(95, 99, 104)'
+        },
+        COPY_FEEDBACK: {
+            success: { icon: 'check', color: 'rgb(24, 128, 56)', messageKey: 'copyFeedbackSuccess', fallback: 'コピーしました' },
+            failed: { icon: 'error', color: 'rgb(217, 48, 37)', messageKey: 'copyFeedbackFailed', fallback: 'コピーに失敗しました' },
+            empty: { icon: 'info', color: 'rgb(227, 116, 0)', messageKey: 'copyFeedbackEmpty', fallback: 'コピーするチャットがありません' }
         }
     }
 };
@@ -275,7 +281,52 @@ function handleExitButtonClick() {
 }
 
 DOMUtils.observeAndAttachEvent(SELECTORS.exitButton, 'click', handleExitButtonClick, true);
-DOMUtils.observeAndAttachEvent(`#${IDS.copyButton}`, 'click', saveChatManual, true);
+// コピー結果（undefined / Promise / 真偽値）を success / failed / empty に分類する
+async function resolveCopyStatus(result, useFallbackFlag) {
+    if (result === undefined) {
+        return 'empty';
+    }
+    if (typeof result === 'boolean') {
+        return result ? 'success' : 'failed';
+    }
+    try {
+        await result;
+    } catch (error) {
+        return 'failed';
+    }
+    return useFallbackFlag && AppState.fallbackCopySucceeded === true ? 'success' : 'failed';
+}
+
+// メインのコピーボタン押下時に結果をボタン上へ表示する
+async function handleCopyButtonClick(event) {
+    const button = event.currentTarget;
+    let status;
+    try {
+        status = await resolveCopyStatus(saveChatManual(), true);
+    } catch (error) {
+        status = 'failed';
+    }
+    UIManager.showCopyFeedback(button, status, CONFIG, document);
+}
+
+// PinP のコピーボタン押下メッセージ処理。PinP 側ボタンへ結果を表示する
+async function handlePinPCopyMessage() {
+    if (!(window.documentPictureInPicture && window.documentPictureInPicture.window)) {
+        saveChatFromPinPCopy();
+        return;
+    }
+    const pinpDoc = window.documentPictureInPicture.window.document;
+    let status;
+    try {
+        status = await resolveCopyStatus(saveChatFromPinPCopy(), false);
+    } catch (error) {
+        status = 'failed';
+    }
+    const pinpButton = pinpDoc.querySelector(`#${IDS.copyButton}`);
+    UIManager.showCopyFeedback(pinpButton, status, CONFIG, pinpDoc);
+}
+
+DOMUtils.observeAndAttachEvent(`#${IDS.copyButton}`, 'click', handleCopyButtonClick, true);
 
 // 退出済みメッセージを監視するためのObserver
 const removedMessageObserver = ObserverManager.observeForElement(
@@ -381,7 +432,7 @@ window.addEventListener('message', (event) => {
                 saveChatFromPinP();
             } else if (event.data.selector === `#${IDS.copyButton}`) {
                 // PinP内のコピーボタンがクリックされた場合（フォーカス移動なし）
-                saveChatFromPinPCopy();
+                handlePinPCopyMessage();
             }
         }
     }

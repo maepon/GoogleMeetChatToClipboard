@@ -14,5 +14,17 @@
   "clipboardWriteError": {
     "message": "Error al copiar al portapapeles:",
     "description": "Mensaje de error cuando falla la escritura en el portapapeles"
+  },
+  "copyFeedbackSuccess": {
+    "message": "Copiado",
+    "description": "コピーボタン押下でコピーに成功したときにボタンに表示する文言"
+  },
+  "copyFeedbackFailed": {
+    "message": "Error al copiar",
+    "description": "コピーボタン押下でコピーに失敗したときにボタンに表示する文言"
+  },
+  "copyFeedbackEmpty": {
+    "message": "No hay mensajes de chat para copiar",
+    "description": "コピーボタン押下時にコピーするチャットが 0 件だったときにボタンに表示する文言"
   }
 }
