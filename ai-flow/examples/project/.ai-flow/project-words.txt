@@ -1,0 +1,4 @@
+# Words of this project that must not appear in the shared part of the flow (prompts and permission profiles).
+# One word per line. make check searches for them as whole words, case-insensitively, and fails if found.
+# Typical entries: your language's tool names (npm, cargo, pytest), product names, main file names.
+# Lines starting with # are ignored. An empty list disables the check.

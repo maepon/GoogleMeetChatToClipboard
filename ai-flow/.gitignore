@@ -1,0 +1,14 @@
+# Ignore rules for the flow directory. They do not depend on the directory name, so they travel with the flow.
+
+# Personal settings (notifications, model IDs). Created by copying .env.example
+.env
+
+# The agents' scratch files. The flow can resume from the Issue if they are lost
+tmp/
+
+# Bring the flow's permission files back in environments whose global gitignore ignores `.claude`
+# (personal settings file names such as settings.json / settings.local.json stay ignored)
+!.claude/
+!.claude/*-permissions.json
+.claude/settings.json
+.claude/settings.local.json
