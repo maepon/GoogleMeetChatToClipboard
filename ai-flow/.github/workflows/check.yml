@@ -1,0 +1,19 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Catch differences between BSD (bundled with macOS) and GNU commands, and between bash 3.2 and 5.x
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: make check (laid out like a host repository)
+        run: ./scripts/ci-check.sh

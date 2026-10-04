@@ -1,0 +1,9 @@
+{
+  "//": "このプロジェクトで追加する権限。scripts/merge-permissions.sh が各プロファイルに足す。node は裸で許可せず、ai-flow/tmp/ の確認スクリプトに限る（ai-flow/docs/setup.md §6）。",
+  "allow": [
+    "Bash(npm test:*)",
+    "Bash(node tmp/:*)",
+    "Bash(node --version)",
+    "Bash(npm --version)"
+  ]
+}
